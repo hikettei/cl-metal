@@ -24,4 +24,5 @@ workloads
 Tested (ing) on:
 
 - Apple M3 Pro
+- Testing on intel mac(TODO)
 
