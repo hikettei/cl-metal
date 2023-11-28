@@ -9,6 +9,8 @@
 	       #:rove)
   :components
   ((:file "source/package")
+   (:file "source/bindings")
+   (:file "source/retcode")
 
    ))
 

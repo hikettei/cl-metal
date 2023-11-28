@@ -26,3 +26,8 @@ Tested (ing) on:
 - Apple M3 Pro
 - Testing on intel mac(TODO)
 
+## Features
+
+- Fundamental Metal Ops (BLAS, mathematical 1d function etc...)
+- Running any kernels written in metal
+

@@ -14,10 +14,7 @@ help:
 
 .PHONY: build
 build: ## Builds Swift Object Files
-	mkdir -p build
-	swiftc -c lib/cl-metal.swift -target $(ARM_TARGET) -o build/cl-metal_ARM64.a
-	swiftc -c lib/cl-metal.swift -target $(X64_TARGET) -o build/cl-metal_X64.a
-	lipo -create build/cl-metal_ARM64.a build/cl-metal_X64.a -o build/cl-metal.a
+	cd ./lib && swift build -c release
 
 .PHONT: test
 test: ## Tests the whole cl-metal package

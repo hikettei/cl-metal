@@ -17,7 +17,10 @@ let package = Package(
     targets: [
         .target(
             name: "CLMetal",
-            dependencies: [])
+            dependencies: []),
+        .testTarget(
+          name: "CLMetalTest",
+          dependencies: ["CLMetal"])
     ]
 )
 
