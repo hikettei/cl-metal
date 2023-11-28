@@ -70,3 +70,9 @@ When calling foreign function using such apis, wrap the code with this macro."
 
 (defcfun "clm_get_compile_error" :string)
 
+(defcfun "clm_get_device" :string
+  (device-idx :int))
+
+(defun get-device (idx)
+  (with-swift-float-mode
+    (clm-get-device idx)))

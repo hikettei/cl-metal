@@ -55,6 +55,8 @@ cl-metal was tested on:
 
 ### Requirements/Tested on
 
+- macOS (>= 11.0)
+
 - SBCL(2.3.10)
 
 - ECL(23.9.9)

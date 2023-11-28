@@ -116,6 +116,35 @@ public func clm_set_device(device_index:Int) -> Int {
     return RetCode.Success.rawValue
 }
 
+@available(macOS 10.15, *)
+@_cdecl("clm_get_device")
+public func clm_get_device(device_index:Int) -> UnsafeMutablePointer<CChar> {
+    let devices = MTLCopyAllDevices()
+    
+    guard let defaultDevice = MTLCreateSystemDefaultDevice() else {
+        return strdup("CannotCreateDevice")
+    }
+    
+    if devices.count == 0 {
+        return strdup("CannotCreateDevice (no gpus)")
+    }
+    
+    if device_index >= devices.count {
+        return strdup("CannotCreateDevice (invaild device_index)")
+    }
+    
+    let tgtDevice = device_index < 0 ? defaultDevice : devices[device_index]
+    
+    var buffer = "= [device: " + String(device_index) + "]=========================================\n"
+    buffer += " name                       : " + tgtDevice.name + "\n"
+    buffer += " isLowPower                 : " + String(tgtDevice.isLowPower) + "\n"
+    buffer += " hasUnifiedMemory           : " + String(tgtDevice.hasUnifiedMemory) + "\n"
+    buffer += " currentAllocatedSize       : " + String(tgtDevice.currentAllocatedSize) + "\n"    
+    buffer += " maxThreadgroupMemoryLength : " + String(tgtDevice.maxThreadgroupMemoryLength) + "\n"
+    
+    return strdup(buffer)
+}
+
 @_cdecl("clm_get_n_device")
 public func clm_get_n_device() -> Int {
     return MTLCopyAllDevices().count

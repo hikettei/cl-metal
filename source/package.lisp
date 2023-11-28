@@ -11,6 +11,7 @@
   (:export
    #:use-device
    #:get-n-device
+   #:get-device
    )
 
   (:export
