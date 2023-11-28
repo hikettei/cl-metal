@@ -27,5 +27,5 @@
   ((:file "test/package"))
   :perform
   (asdf:test-op (o s)
-		(uiop:symbol-call "rove" "run" :cl-metal/test)))
+		(uiop:symbol-call (find-package :rove) :run :cl-metal/test)))
 
