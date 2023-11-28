@@ -2,6 +2,7 @@
 (in-package :cl-metal.test)
 
 (defun metal-sin ()
+  ;; The metal code below is inlined:
   (make-metal
    "fsin"
    "
@@ -38,12 +39,10 @@ kernel void fsin(const device float *inVector [[ buffer(0) ]],
    (let* ((mtl (metal-sin))
 	  (a   (make-array 10
 			   :element-type 'single-float
-			   :initial-element 0.0))
+			   :initial-element 1.0))
 	  (b   (make-array 10
 			   :element-type 'single-float
 			   :initial-element 0.0)))
-     (funcall-metal mtl b a)
-     (print b)
-     (print a)
-     t)))
+     (time (funcall-metal mtl b a))
+     (every #'(lambda (x) (= x (sin 1.0))) b))))
 
