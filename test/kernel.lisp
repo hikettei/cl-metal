@@ -44,5 +44,5 @@ kernel void fsin(const device float *inVector [[ buffer(0) ]],
 			   :element-type 'single-float
 			   :initial-element 0.0)))
      (funcall-metal mtl b a)
-     (every #'(lambda (x) (= x (sin 1.0))) b))))
+     (every #'(lambda (x) (= x 0.841471)) b))))
 

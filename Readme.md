@@ -53,9 +53,9 @@ cl-metal was tested on:
 
 - (To be) Macbook Pro Early 2017 (Intel Core i5)
 
-### Requirements
+### Requirements/Tested on
 
-- ECL
+- SBCL(2.3.10)
 
-- SBCL (SHOULD WORK BUT STILL SEGFAULTS WHY??)
+- ECL(23.9.9)
 

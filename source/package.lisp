@@ -6,6 +6,8 @@
 
 ")
   (:use :cl :cffi)
+  (:import-from :float-features
+		#:with-float-traps-masked)
   (:export
    #:use-device
    #:get-n-device
@@ -44,7 +46,7 @@
     ;; as well as machine-version
 
     (or
-     #+(or sbcl)(string= "Apple" (machine-version) 0 5)
+     #+(or sbcl)(string= "Apple" (subseq (machine-version) 0 5))
      #+(or ecl)(null (machine-version))
      (progn
        (warn "cl-metal couldn't determine the version of the machine; proceeds anyway.")

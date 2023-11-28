@@ -41,7 +41,7 @@
 			(error-output
 			  (uiop:process-info-error-output process-info)))
 		   (unless (zerop (uiop:wait-process process-info))
-		     (error "cl-metal: Failed to create a metallib cache due to:~%~a"
+		     (error "cl-metal: Failed to create an inlined metallib cache due to compiling error:~%~a"
 			    (alexandria:read-stream-content-into-string error-output))))))
 	  (run-cmd cmd1)
 	  (run-cmd cmd2))
@@ -73,31 +73,32 @@ Return -> Metallib"
   (declare (type Metallib metal))
 
   ;; Ensures the function can be loaded?
-  (ecase (metallib-load-state metal)
-    (:not-yet-compiled
-     (%compile-metal-kernel
-      (metallib-source metal)
-      (metallib-fname  metal)))
-    (:compiled-metallib
-     (if (probe-file (metallib-pathname metal)) ;; Does the cached .metalib still exist?
-	 ;; Loading a cache stored in .cl_metal_cache
-	 (clm-load-from-metallib
-	  (metallib-pathname metal)
-	  (metallib-fname    metal))
-	 ;; Compiling again
-	 (%compile-metal-kernel
-	  (metallib-source metal)
-	  (metallib-fname  metal)))))
+  (with-swift-float-mode
+    (ecase (metallib-load-state metal)
+      (:not-yet-compiled
+       (%compile-metal-kernel
+	(metallib-source metal)
+	(metallib-fname  metal)))
+      (:compiled-metallib
+       (if (probe-file (metallib-pathname metal)) ;; Does the cached .metalib still exist?
+	   ;; Loading a cache stored in .cl_metal_cache
+	   (clm-load-from-metallib
+	    (metallib-pathname metal)
+	    (metallib-fname    metal))
+	   ;; Compiling again
+	   (%compile-metal-kernel
+	    (metallib-source metal)
+	    (metallib-fname  metal)))))
 
-  ;; Commits the function
-  (with-pointer-to-vector-data (in* in-buffer)
-    (with-pointer-to-vector-data (out* out-buffer)      
-      (clm-alloc (array-total-size in-buffer)
-		 in*
-		 (type2iformat (aref in-buffer 0))
-		 (array-total-size out-buffer)
-		 (type2iformat (aref out-buffer 0)))
-      (clm-run 1)
-      (clm-retrieve (array-total-size out-buffer) out*)))
-  out-buffer)
+    ;; Commits the function
+    (with-pointer-to-vector-data (in* in-buffer)
+      (with-pointer-to-vector-data (out* out-buffer)      
+	(clm-alloc (array-total-size in-buffer)
+		   in*
+		   (type2iformat (aref in-buffer 0))
+		   (array-total-size out-buffer)
+		   (type2iformat (aref out-buffer 0)))
+	(clm-run 1)
+	(clm-retrieve (array-total-size out-buffer) out*)))
+    out-buffer))
 

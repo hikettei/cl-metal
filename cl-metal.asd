@@ -7,7 +7,8 @@
 	       #:alexandria
 	       #:mgl-pax
 	       #:rove
-	       #:uiop)
+	       #:uiop
+	       #:float-features)
   :components
   ((:file "source/package")
    (:file "source/bindings")
