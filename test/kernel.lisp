@@ -1,7 +1,21 @@
 
 (in-package :cl-metal.test)
 
-(deftest compiling-simple-metal-kernel
+(defun metal-sin ()
+  (make-metal
+   "fsin"
+   "
+#include <metal_stdlib>
+
+using namespace metal;
+
+kernel void fsin(const device float *inVector [[ buffer(0) ]],
+		device float *outVector [[ buffer(1) ]],
+		uint id [[ thread_position_in_grid ]]) {
+  outVector[id] = sin(inVector[id]);
+}"))
+
+(deftest running-simple-kernel
   (ok
    (eql
     t
@@ -19,5 +33,17 @@ kernel void fsin(const device float *inVector [[ buffer(0) ]],
   outVector[id] = sin(inVector[id]);
 }
 "
-       "fsin")))))
+       "fsin"))))
+  (ok
+   (let* ((mtl (metal-sin))
+	  (a   (make-array 10
+			   :element-type 'single-float
+			   :initial-element 0.0))
+	  (b   (make-array 10
+			   :element-type 'single-float
+			   :initial-element 0.0)))
+     (funcall-metal mtl b a)
+     (print b)
+     (print a)
+     t)))
 

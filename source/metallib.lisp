@@ -68,7 +68,7 @@ Return -> Metallib"
 (define-compiler-macro make-metal (fname source)
   (%make-metal-inlined fname source))
 
-(defun funcall-metal (metal &rest args)
+(defun funcall-metal (metal out-buffer in-buffer)
   "Invokes the kernel described in metal"
   (declare (type Metallib metal))
 
@@ -81,11 +81,19 @@ Return -> Metallib"
     (:compiled-metallib
      (with-slots ((pathname pathname) (fname fname) (source source)) metal
        (if (probe-file pathname) ;; Does the cached .metalib still exist?
-	   nil
+	   (clm-load-from-metallib pathname fname)
 	   (%compile-metal-kernel source fname)))))
 
   ;; Commits the function
+  (with-pointer-to-vector-data (in* in-buffer)
+    (with-pointer-to-vector-data (out* out-buffer)      
+      (clm-alloc 10
+		 in*
+		 (type2iformat (aref in-buffer 0))
+		 10
+		 (type2iformat (aref out-buffer 0)))
+      (clm-run 1)
+      (clm-retrieve 10 out*)))
+  out-buffer)
 
-
-  )
 
