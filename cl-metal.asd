@@ -17,7 +17,7 @@
    )
 
   :in-order-to
-  ((test-op (asdf:test-op cl-metal/test))))		    
+  ((test-op (asdf:test-op cl-metal/test))))    
 
 (asdf:defsystem :cl-metal/test
   :description ""

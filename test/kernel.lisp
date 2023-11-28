@@ -43,6 +43,6 @@ kernel void fsin(const device float *inVector [[ buffer(0) ]],
 	  (b   (make-array 10
 			   :element-type 'single-float
 			   :initial-element 0.0)))
-     (time (funcall-metal mtl b a))
+     (funcall-metal mtl b a)
      (every #'(lambda (x) (= x (sin 1.0))) b))))
 

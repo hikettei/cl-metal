@@ -13,11 +13,11 @@ help:
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: build
-build: ## Builds Swift Object Files
+build: ## Builds libCLMetal.dylib
 	cd ./lib && swift build -c release
 
 .PHONY: test
-test: ## Tests the whole cl-metal package
+test: ## Running the test harness
 	cd ./lib && swift build -c release && swift test && cd ..
 	$(CL) $(QUICKLOAD) --eval '(print (asdf:test-system :cl-metal/test))'
 
