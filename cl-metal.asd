@@ -24,7 +24,9 @@
   :licence     "MIT"
   :depends-on (#:cl-metal #:rove)
   :components
-  ((:file "test/package"))
+  ((:file "test/package")
+   (:file "test/device")
+   (:file "test/kernel"))
   :perform
   (asdf:test-op (o s)
 		(uiop:symbol-call (find-package :rove) :run :cl-metal/test)))

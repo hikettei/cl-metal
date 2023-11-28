@@ -19,5 +19,5 @@ build: ## Builds Swift Object Files
 .PHONY: test
 test: ## Tests the whole cl-metal package
 	cd ./lib && swift build -c release && swift test && cd ..
-	$(CL) $(QUICKLOAD) --eval '(print (asdf:test-system :cl-metal))'
+	$(CL) $(QUICKLOAD) --eval '(print (asdf:test-system :cl-metal/test))'
 

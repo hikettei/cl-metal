@@ -15,7 +15,7 @@ enum RetCode: Int {
     case CannotCreateCommandQueue   = -2
     case NotReadyToCompile          = -3
     case FailedToCompile            = -4
-    case FailedToFindFunctione      = -5
+    case FailedToFindFunction       = -5
     case NotReadyToCompute          = -6
     case FailedToMakeInputBuffer    = -7
     case FailedToMakeOutputBuffer   = -8
@@ -53,10 +53,10 @@ enum Dtype: Int {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Following APIs are Strongly inspired from: https://github.com/baldand/py-metal-compute/blob/main/src/metalcompute.swift
 
-@available(macOS 10.13, *)
-var device       = MTLCreateSystemDefaultDevice()!,
-    commandQueue = device.makeCommandQueue()!
+var device:MTLDevice?
+var commandQueue:MTLCommandQueue?
 
 var library:MTLLibrary?
 var function:MTLFunction?
@@ -110,7 +110,7 @@ public func clm_set_device(device_index:Int) -> Int {
     readyToCompile = true
     readyToCompute = false
 
-    return 0//RetCode.Success.rawValue
+    return RetCode.Success.rawValue
 }
 
 @_cdecl("clm_get_n_device")
@@ -118,3 +118,56 @@ public func clm_get_n_device() -> Int {
     return MTLCopyAllDevices().count
 }
 
+// Initializes all buffers, all global variables as it was ignoring device/queue
+@_cdecl("clm_init_device")
+public func clm_init_device() -> Int {
+    inputBuffer = nil
+    outputBuffer = nil
+    function = nil
+    library = nil
+    device = nil
+    readyToCompile = false
+    readyToCompute = false
+    readyToRun = false
+    readyToRetrieve = false
+    return RetCode.Success.rawValue
+}
+
+@_cdecl("clm_compile_kernel")
+public func clm_compile_kernel(metalRaw: UnsafePointer<CChar>,
+                               fnameRaw: UnsafePointer<CChar>) -> Int {
+    guard readyToCompile       else { return RetCode.NotReadyToCompile.rawValue }
+    guard let lDevice = device else { return RetCode.NotReadyToCompile.rawValue }
+
+    // CString <-> String
+    let metal = String(cString: metalRaw)
+    let fName = String(cString: fnameRaw)
+
+    let options = MTLCompileOptions();
+    options.fastMathEnabled = true
+    //options.languageVersion = .version2_3
+
+    do {
+        let newLibrary = try lDevice.makeLibrary(source: metal, options: options)       
+        guard let newFunction = newLibrary.makeFunction(name: fName) else { return RetCode.FailedToFindFunction.rawValue }
+
+        // updating two global variables: library and function
+        library = newLibrary
+        function = newFunction
+    } catch {
+        compileError = error.localizedDescription
+        return RetCode.FailedToCompile.rawValue
+    }
+
+    // Here, after confiming compiling was succeed, two gloal variables are changed:
+    readyToCompute = true
+    readyToRun = false
+    
+    return RetCode.Success.rawValue
+}
+
+// Loads pre-compiled metal kernel file as a MTLLibrary
+@_cdecl("clm_load_kernel")
+public func clm_load_kernel() -> Int {
+    return 0
+}

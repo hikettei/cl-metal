@@ -2,7 +2,7 @@
 (mgl-pax:define-package :cl-metal
     (:documentation "
 
-`:metal` is added to the `cl:*features*` if Metal API is available in the computer.
+`:cl-metal` is added to the `cl:*features*` if Metal API is available in the computer.
 
 ")
   (:use :cl :cffi)
@@ -10,6 +10,9 @@
    #:use-device
    #:get-n-device
    )
+
+  (:export
+   #:%compile-metal-kernel)
   
   (:export
    #:metal-available-p
@@ -25,33 +28,34 @@
     "Returns T if the (machine-type) is ARM64"
     ;; The specification of machine-type depends on each system...
     ;; e.g.: ARM64 in SBCL but arm64 in ecl
-    ;;(string=
-     ;;"ARM64"
-     ;;(machine-type))
-
-    t)
+    (or
+     #+(or sbcl)(string= "ARM64" (machine-type))
+     #+(or ecl)(string="arm64"   (machine-type))
+     (progn
+       (warn "cl-metal couldn't determine the architecture of cpu; proceeds anyway.")
+       t)))    
   
   (defun apple-computer-p ()
     "Returns T if the (machine-version) starts with Apple"
     ;; as well as machine-version
-    ;;(string=
-    ;; "Apple"
-    ;; (subseq
-    ;;  (machine-version)
-    ;;  0 5))
-    t
-    )
 
-  (unless (find :metal *features*)
+    (or
+     #+(or sbcl)(string= "Apple" (machine-version) 0 5)
+     #+(or ecl)(null (machine-version))
+     (progn
+       (warn "cl-metal couldn't determine the version of the machine; proceeds anyway.")
+       t)))
+
+  (unless (find :cl-metal *features*)
     (if (apple-computer-p)
-	(push :metal *features*)
+	(push :cl-metal *features*)
 	(warn "cl-metal: Metal isn't available on the current computer: ~a" (machine-version)))))
 
 (defun metal-available-p ()
   "Return T if the current computer provides Metal API otherwise returns nil.
 The function is inlined before the compilation and the overhead can be ignored."
-  #+metal(progn t)
-  #-metal(progn nil))
+  #+cl-metal(progn t)
+  #-cl-metal(progn nil))
 
 (mgl-pax:defsection @cl-metal-manual (:title "cl-metal manual")
   ""
@@ -97,10 +101,5 @@ The function is inlined before the compilation and the overhead can be ignored."
 
 ;; Loading libCLMetal.dylib
 (load-cl-metal-library)
-
-
-;; (metal-syntax "...")
-;; ^ Compiled when the macro is expanded;
-;; ^ the cache is created at ./.cl_metal_cache
 
 

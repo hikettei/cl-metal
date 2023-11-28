@@ -37,3 +37,9 @@ cl-metal was tested on:
 
 - Fundamental Metal APIs (BLAS, Mathematical Functions etc...)
 
+## Requirements
+
+- ECL
+
+- SBCL (still falls, w h y ???)
+
