@@ -7,7 +7,10 @@
 ")
   (:use :cl :cffi)
   (:export
-   #:clm-set-device)
+   #:use-device
+   #:get-n-device
+   )
+  
   (:export
    #:metal-available-p
    #:apple-silicon-p
@@ -17,19 +20,27 @@
 (cl:in-package :cl-metal)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; [FIXME]
   (defun apple-silicon-p ()
     "Returns T if the (machine-type) is ARM64"
-    (string=
-     "ARM64"
-     (machine-type)))
+    ;; The specification of machine-type depends on each system...
+    ;; e.g.: ARM64 in SBCL but arm64 in ecl
+    ;;(string=
+     ;;"ARM64"
+     ;;(machine-type))
+
+    t)
   
   (defun apple-computer-p ()
     "Returns T if the (machine-version) starts with Apple"
-    (string=
-     "Apple"
-     (subseq
-      (machine-version)
-      0 5)))
+    ;; as well as machine-version
+    ;;(string=
+    ;; "Apple"
+    ;; (subseq
+    ;;  (machine-version)
+    ;;  0 5))
+    t
+    )
 
   (unless (find :metal *features*)
     (if (apple-computer-p)

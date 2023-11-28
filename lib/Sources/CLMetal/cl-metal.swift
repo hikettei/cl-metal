@@ -110,6 +110,11 @@ public func clm_set_device(device_index:Int) -> Int {
     readyToCompile = true
     readyToCompute = false
 
-    return RetCode.Success.rawValue
+    return 0//RetCode.Success.rawValue
+}
+
+@_cdecl("clm_get_n_device")
+public func clm_get_n_device() -> Int {
+    return MTLCopyAllDevices().count
 }
 

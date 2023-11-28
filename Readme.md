@@ -1,33 +1,39 @@
 
-# cl-metal
-
-> __Common Lisp meets Metal API on macOS__
-
-This is a low-level binding for Metal.
-
-...
+# cl-metal, Common Lisp meets Metal on macOS
 
 A low-level binding for Common Lisp Array and Metal Interoperation. Inspired from [metalcompute](https://github.com/baldand/py-metal-compute)
 
 ## Build
 
+```sh
+$ make build
+```
 
 ## Test
 
+```sh
+% make test
+```
+
 ## Docs
 
-workloads
+(TODO)
 
-1am, rove, mgl-pax?
+## Env
 
+cl-metal was tested on:
 
-Tested (ing) on:
+- Macbook Pro (2023, M3 Pro)
 
-- Apple M3 Pro
-- Testing on intel mac(TODO)
+- Macbook Pro Early 2017 (Intel i5)
 
 ## Features
 
-- Fundamental Metal Ops (BLAS, mathematical 1d function etc...)
-- Running any kernels written in metal
+- Principle buffers, devices, and library managements.
+
+- simple-array interop
+
+- Directly embedding metal kernels on your Common Lisp Code, being compiled in ahead of execution
+
+- Fundamental Metal APIs (BLAS, Mathematical Functions etc...)
 

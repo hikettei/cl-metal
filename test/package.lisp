@@ -6,6 +6,9 @@
 
 (in-package :cl-metal.test)
 
-(deftest load-mps-device
-  (ok (= 0 (clm-set-device 0))))
+(deftest get-the-number-of-devices
+  (ok (print (get-n-device))))
+
+(deftest initialize-mps-device
+  (ok (= 0 (use-device 0))))
 
