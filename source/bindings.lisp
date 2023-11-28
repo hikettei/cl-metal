@@ -33,3 +33,28 @@
   (return-with-retcode
    (clm-compile-kernel source function-name)))
 
+(defcfun "clm_load_from_metallib" :int
+  (pathname :string)
+  (fname    :string))
+
+(defun %load-from-metallib (pathname fname)
+  ""
+  (return-with-retcode
+   (clm-load-from-metallib pathname fname)))
+
+(defcfun "clm_alloc" :int
+  (icount :int)
+  (input  :pointer)
+  (idtype :int)
+  (ocount :int)
+  (oformat :int))
+
+(defcfun "clm_run" :int
+  (kcount :int))
+
+(defcfun "clm_retrieve" :int
+  (ocount :int)
+  (obuff  :pointer))
+
+(defcfun "clm_get_compile_error" :string)
+

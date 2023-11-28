@@ -6,7 +6,8 @@
   :depends-on (#:cffi
 	       #:alexandria
 	       #:mgl-pax
-	       #:rove)
+	       #:rove
+	       #:uiop)
   :components
   ((:file "source/package")
    (:file "source/bindings")

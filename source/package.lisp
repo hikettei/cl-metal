@@ -12,7 +12,11 @@
    )
 
   (:export
-   #:%compile-metal-kernel)
+   #:make-metal
+   #:%make-metal-inlined
+   #:funcall-metal
+   #:%compile-metal-kernel
+   #:%load-from-metallib)
   
   (:export
    #:metal-available-p
