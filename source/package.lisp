@@ -7,6 +7,8 @@
 ")
   (:use :cl :cffi)
   (:export
+   #:clm-set-device)
+  (:export
    #:metal-available-p
    #:apple-silicon-p
    #:apple-computer-p
@@ -84,4 +86,10 @@ The function is inlined before the compilation and the overhead can be ignored."
 
 ;; Loading libCLMetal.dylib
 (load-cl-metal-library)
+
+
+;; (metal-syntax "...")
+;; ^ Compiled when the macro is expanded;
+;; ^ the cache is created at ./.cl_metal_cache
+
 

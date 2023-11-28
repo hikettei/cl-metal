@@ -1,6 +1,6 @@
 
 CL            := ros
-QUICKLOAD     := --load cl-metal.asd --eval '(asdf:load-system :cl-metal)'
+QUICKLOAD     := --load cl-metal.asd --eval '(progn (load "cl-metal.asd") (ql:quickload :cl-metal))'
 
 ARM_TARGET    := arm64-apple-macos11
 X64_TARGET    := x86_64-apple-macos11
@@ -16,7 +16,7 @@ help:
 build: ## Builds Swift Object Files
 	cd ./lib && swift build -c release
 
-.PHONT: test
+.PHONY: test
 test: ## Tests the whole cl-metal package
-	$(CL) $(QUICKLOAD)
+	$(CL) $(QUICKLOAD) --eval "(asdf:test-system :cl-metal)"
 

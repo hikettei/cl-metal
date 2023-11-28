@@ -11,6 +11,21 @@
   ((:file "source/package")
    (:file "source/bindings")
    (:file "source/retcode")
+   (:file "source/metallib")
 
-   ))
+   )
+
+  :in-order-to
+  ((test-op (asdf:test-op cl-metal/test))))		    
+
+(asdf:defsystem :cl-metal/test
+  :description ""
+  :author      "hikettei <ichndm@gmail.com>"
+  :licence     "MIT"
+  :depends-on (#:cl-metal #:rove)
+  :components
+  ((:file "test/package"))
+  :perform
+  (asdf:test-op (o s)
+		(uiop:symbol-call "rove" "run" :cl-metal/test)))
 

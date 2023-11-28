@@ -2,6 +2,6 @@
 (in-package :cl-metal)
 
 ;; Switching devices
-(defcfun "clm_sw_init" :int
+(defcfun "clm_set_device" :int
   (device-idx :int))
 
