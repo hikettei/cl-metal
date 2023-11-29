@@ -31,6 +31,10 @@
   (:export
    #:with-metalize)
 
+  (:export
+   #:define-kernel
+   #:kernel-lambda)
+
   )
 
 (cl:in-package :cl-metal)

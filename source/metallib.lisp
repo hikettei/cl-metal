@@ -52,7 +52,7 @@
     (let ((lib-path (make-cached-metallib fname source)))
       `(make-metallib
 	:load-state :compiled-metallib
-	:args     ',args
+	:args     (map 'list #'parse-marg ',args ',(range 0 (length args)))
 	:fname    ,fname
 	:source   ,source
 	:pathname ,lib-path))))
@@ -76,7 +76,9 @@ Return -> Metallib"
 
 (defun funcall-metal (metallib &rest args)
   "Invokes the kernel described in metal"
-  (declare (type Metallib metallib))
+  (declare (type Metallib metallib)
+	   ;;(optimize (speed 3))
+	   )
 
   ;; Ensures the function can be loaded?
   (with-swift-float-mode
@@ -102,6 +104,9 @@ Return -> Metallib"
 	    "funcall-metal: The number of arguments is invaild: got ~a expected ~a"
 	    (length args)
 	    (length (metallib-args metallib)))
+
+    ;; fixme
+    ;; args = thread-idx arg argとかになったら順番ずれる
     
     ;; 1. Initialize all buffers
     (clm-reset-buffer)
@@ -128,12 +133,11 @@ Return -> Metallib"
 				       arr))))
 		   
 		   ;; the function send seems a little weird:
-		   ;;  is there cffi:with-pointer-to-vector-data but a function version??		    
-		   (with-pointer-to-vector-data
-		       (bind* (car rest-arr))
+		   ;;  is there cffi:with-pointer-to-vector-data but a function version??
+		   (with-pointer-to-vector-data (bind* (car rest-arr))
 		     (clm-alloc
 		      count
-		      (array-total-size (aref (car rest-arr) 0))
+		      (array-total-size (car rest-arr))
 		      bind*
 		      (type2iformat (aref (car rest-arr) 0)))
 		     (send
