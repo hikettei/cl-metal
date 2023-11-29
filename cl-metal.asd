@@ -32,7 +32,8 @@
   :components
   ((:file "test/package")
    (:file "test/device")
-   (:file "test/kernel"))
+   (:file "test/kernel")
+   (:file "test/metalize"))
   :perform
   (asdf:test-op (o s)
 		(uiop:symbol-call (find-package :rove) :run :cl-metal/test)))

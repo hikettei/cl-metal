@@ -113,13 +113,7 @@
 		"")
 	    (cName return-type)
 	    (cName function-name)
-	    (apply
-	     #'concatenate
-	     'string
-	     (butlast
-	      (loop for arg in args
-		    append
-		    `(,(marg-as-string arg) ", "))))
+	    (map-split ", " #'marg-as-string args)
 	    metalized-form))
 
   (defun eval-metal-form (metal-forms)
@@ -214,6 +208,13 @@ If metalized-form is multiple, each result is concatenated with merging newline+
     "b[id] = sin(a[id])"
     "b[id] = sin(a[id])")
 
+(define-kernel (metal-cos
+		:thread-position-in-grid id
+		:template t)
+    (void ((x* T :in) (out* T :out)))
+    (with-metalize
+	(if (> 1 0)
+	    (setf (aref out id) (aref x id)))))
 
 (kernel-lambda () (void ((a* float :in) (b* float :out )))
 	       "b[id] = a[id];")

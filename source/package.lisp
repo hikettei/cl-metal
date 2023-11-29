@@ -27,6 +27,9 @@
    #:funcall-metal
    #:%compile-metal-kernel
    #:%load-from-metallib)
+
+  (:export
+   #:with-metalize)
   
 
   )
