@@ -3,7 +3,6 @@
 
 ;; with-metalize: -> S-expression -> Metal Kernel
 
-;; 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun cSymbol (symbol)
     (case symbol
@@ -72,6 +71,12 @@
        (warn "metalize-form: Can't deal with this form: ~a" form)
        (format nil "~a" form)))))
 
+
+;; [TODO]
+;;  - Testing
+;;  - Complete all specs
+;;  - docs
+;;  - compatible with cl-cuda
 
 (defmacro with-metalize (&rest forms)
   "[Experimental] Translates the given S-expressions into a metal expression"

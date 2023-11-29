@@ -58,26 +58,48 @@ enum Dtype: Int {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var device:MTLDevice?
-var commandQueue:MTLCommandQueue?
+class CLMBuffer {
+    public var buff:MTLBuffer
+    public var count:Int
+    public var stride:Int
+    
+    init (_ buff:MTLBuffer, _ count:Int, _ stride:Int) {
+        self.buff   = buff
+        self.count  = count
+        self.stride = stride
+    }
+}
 
-var library:MTLLibrary?
-var function:MTLFunction?
-var inputBuffer:MTLBuffer?
+// Session = device, queue et al
+//         = [inBuff1, outBuff2, ...] x N
 
-var inputCount:Int = 0
-var inputStride:Int = 0
+class DeviceSession {
+    var device:MTLDevice?
+    var commandQueue:MTLCommandQueue?
+    var library:MTLLibrary?
+    var function:MTLFunction?
 
-var outputBuffer:MTLBuffer?
-var outputCount:Int = 0
-var outputStride:Int = 0
+    public var readyToCompile:Bool = true
+    public var readyToCompute:Bool = false
 
-var readyToCompile = false
-var readyToCompute = false
+    public var readyToRun:Bool      = false
+    public var readyToRetrieve:Bool = false
 
-var readyToRun = false
-var readyToRetrieve = false
+    public var buffs:[Int:CLMBuffer] = [:]
+    
+    init(_ device:MTLDevice, _ cmdQueue:MTLCommandQueue) {
+        self.device = device
+        self.commandQueue = cmdQueue
+        self.readyToCompile = true
+        self.readyToCompute = false        
+    }
 
+    public func append_buffer (_ nth:Int, _ inputBuffer:MTLBuffer,_ inputCount:Int,_ inputStride:Int) {
+        self.buffs[nth] = CLMBuffer(inputBuffer, inputCount, inputStride)
+    }
+}
+
+var globalDeviceSession:DeviceSession?
 var compileError:String = ""
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,20 +121,14 @@ public func clm_set_device(device_index:Int) -> Int {
     }
     
     let newDevice = device_index < 0 ? defaultDevice : devices[device_index] 
-
-    // Updating Global Variable: device
-    device = newDevice
     
     guard let newCommandQueue = newDevice.makeCommandQueue() else {
         return RetCode.CannotCreateCommandQueue.rawValue
     }
 
-    // Updating Global Variables:    
-    commandQueue = newCommandQueue
+    // Updating Global Session:
+    globalDeviceSession = DeviceSession(newDevice, newCommandQueue)
     
-    readyToCompile = true
-    readyToCompute = false
-
     return RetCode.Success.rawValue
 }
 
@@ -150,26 +166,13 @@ public func clm_get_n_device() -> Int {
     return MTLCopyAllDevices().count
 }
 
-// Initializes all buffers, all global variables as it was ignoring device/queue
-@_cdecl("clm_init_device")
-public func clm_init_device() -> Int {
-    inputBuffer = nil
-    outputBuffer = nil
-    function = nil
-    library = nil
-    device = nil
-    readyToCompile = false
-    readyToCompute = false
-    readyToRun = false
-    readyToRetrieve = false
-    return RetCode.Success.rawValue
-}
-
 @_cdecl("clm_compile_kernel")
 public func clm_compile_kernel(metalRaw: UnsafePointer<CChar>,
                                fnameRaw: UnsafePointer<CChar>) -> Int {
-    guard readyToCompile       else { return RetCode.NotReadyToCompile.rawValue }
-    guard let lDevice = device else { return RetCode.NotReadyToCompile.rawValue }
+    let session = globalDeviceSession
+    //guard session! != nil               else { return RetCode.NotReadyToCompile.rawValue }
+    guard session!.readyToCompile       else { return RetCode.NotReadyToCompile.rawValue }
+    guard let lDevice = session!.device else { return RetCode.NotReadyToCompile.rawValue }
 
     // CString <-> String
     let metal = String(cString: metalRaw)
@@ -183,17 +186,16 @@ public func clm_compile_kernel(metalRaw: UnsafePointer<CChar>,
         let newLibrary = try lDevice.makeLibrary(source: metal, options: options)       
         guard let newFunction = newLibrary.makeFunction(name: fName) else { return RetCode.FailedToFindFunction.rawValue }
 
-        // updating two global variables: library and function
-        library = newLibrary
-        function = newFunction
+        session!.library = newLibrary
+        session!.function = newFunction
     } catch {
         compileError = error.localizedDescription
         return RetCode.FailedToCompile.rawValue
     }
 
     // Here, after confiming compiling was succeed, two gloal variables are changed:
-    readyToCompute = true
-    readyToRun = false
+    session!.readyToCompute = true
+    session!.readyToRun = false
     
     return RetCode.Success.rawValue
 }
@@ -201,9 +203,10 @@ public func clm_compile_kernel(metalRaw: UnsafePointer<CChar>,
 // Loads pre-compiled metal kernel file as a MTLLibrary
 @_cdecl("clm_load_from_metallib")
 public func clm_load_from_metallib(metallibPath: UnsafePointer<CChar>, fnameRaw: UnsafePointer<CChar>) -> Int {
-
-    guard readyToCompile       else { return RetCode.NotReadyToCompile.rawValue }
-    guard let lDevice = device else { return RetCode.NotReadyToCompile.rawValue }
+    let session = globalDeviceSession
+    guard session != nil                else { return RetCode.NotReadyToCompile.rawValue }
+    guard session!.readyToCompile       else { return RetCode.NotReadyToCompile.rawValue }
+    guard let lDevice = session!.device else { return RetCode.NotReadyToCompile.rawValue }
 
     let path  = String(cString: metallibPath)
     let fName = String(cString: fnameRaw)
@@ -213,15 +216,15 @@ public func clm_load_from_metallib(metallibPath: UnsafePointer<CChar>, fnameRaw:
         guard let newFunction = newLibrary.makeFunction(name: fName) else { return RetCode.FailedToFindFunction.rawValue }
 
         // updating two global variables: library and function
-        library = newLibrary
-        function = newFunction
+        session!.library = newLibrary
+        session!.function = newFunction
     } catch {
         return RetCode.FailedToLoadLibrary.rawValue
     }
-    
+
     // Here, after confiming compiling was succeed, two gloal variables are changed:
-    readyToCompute = true
-    readyToRun = false
+    session!.readyToCompute = true
+    session!.readyToRun = false
 
     return RetCode.Success.rawValue
 }
@@ -256,35 +259,34 @@ func stride_of(fmt: Int) -> Int {
     }
 }
 
-@available(macOS 11.0, *)
-@_cdecl("clm_alloc")
-public func clm_alloc(icount: Int, input: UnsafeRawPointer, iformat: Int, ocount: Int, oformat: Int) -> Int {
-    // Allocate input/output buffers for run
-    // Separating this step allows python global lock to be released for the actual run which does not need any python objects
-    guard readyToCompute       else { return RetCode.NotReadyToCompute.rawValue }
-    guard let lDevice = device else { return RetCode.NotReadyToCompute.rawValue }
+@_cdecl("clm_reset_buffer")
+public func clm_reset_buffer() -> Int {
+    let session = globalDeviceSession
+    guard session != nil else { return RetCode.NotReadyToCompile.rawValue }
+    session!.buffs  = [:]
+    return 0
+}
 
-    inputStride  = stride_of(fmt: iformat)
-    outputStride = stride_of(fmt: oformat)
+@available(macOS 11.0, *)
+// Adds a new buffer to the current session
+@_cdecl("clm_alloc")
+public func clm_alloc(nth:Int, icount: Int, input: UnsafeRawPointer, iformat: Int) -> Int {
+    let session = globalDeviceSession
+//    guard session != nil                else { return RetCode.NotReadyToCompile.rawValue }
+    guard session!.readyToCompute       else { return RetCode.NotReadyToCompile.rawValue }
+    guard let lDevice = session!.device else { return RetCode.NotReadyToCompile.rawValue }
+
+    let inputStride  = stride_of(fmt: iformat)
     
     guard inputStride  != 0 else { return RetCode.UnsupportedInputFormat.rawValue }    
-    guard outputStride != 0 else { return RetCode.UnsupportedOutputFormat.rawValue }
 
     guard let newInputBuffer  = lDevice.makeBuffer(bytes: input, length: inputStride * icount, options: .storageModeShared) else {
         return RetCode.FailedToMakeInputBuffer.rawValue
     }
-    guard let newOutputBuffer = lDevice.makeBuffer(length: outputStride * ocount, options: .storageModeShared) else {
-        return RetCode.FailedToMakeOutputBuffer.rawValue
-    }
 
-    // updating global variables
-    inputBuffer     = newInputBuffer
-    outputBuffer    = newOutputBuffer
-    inputCount      = icount
-    outputCount     = ocount
-    readyToRun      = true
-    readyToRetrieve = false
-
+    session!.append_buffer(nth, newInputBuffer, icount, inputStride)
+    session!.readyToRun      = true
+    session!.readyToRetrieve = false
     return RetCode.Success.rawValue
 }
 
@@ -292,43 +294,54 @@ public func clm_alloc(icount: Int, input: UnsafeRawPointer, iformat: Int, ocount
 @_cdecl("clm_run")
 public func clm_run(kcount:Int) -> Int {
     // Execute the configured compute task, waiting for completion
-    guard readyToRun else { return RetCode.NotReadyToRun.rawValue }
-    guard let lDevice = device else { return RetCode.NotReadyToRun.rawValue }
-    guard let lFunction = function else { return RetCode.NotReadyToRun.rawValue }
-    guard let lCommandQueue = commandQueue else { return RetCode.NotReadyToRun.rawValue }
-    guard let lInputBuffer = inputBuffer else { return RetCode.NotReadyToRun.rawValue }
-    guard let lOutputBuffer = outputBuffer else { return RetCode.NotReadyToRun.rawValue }
-    guard let commandBuffer = lCommandQueue.makeCommandBuffer() else { return RetCode.CannotCreateCommandBuffer.rawValue }
-    guard let encoder = commandBuffer.makeComputeCommandEncoder() else { return RetCode.CannotCreateCommandEncoder.rawValue }
-
+    
+    let session = globalDeviceSession
+    guard session != nil else { return RetCode.NotReadyToCompile.rawValue }
+    
+    guard session!.readyToRun else { return RetCode.NotReadyToRun.rawValue }
+    guard let lDevice       = session!.device       else { return RetCode.NotReadyToRun.rawValue }
+    guard let lFunction     = session!.function     else { return RetCode.NotReadyToRun.rawValue }
+    guard let lCommandQueue = session!.commandQueue else { return RetCode.NotReadyToRun.rawValue }
+    guard let commandBuffer = lCommandQueue.makeCommandBuffer()         else { return RetCode.CannotCreateCommandBuffer.rawValue }
+    guard let encoder       = commandBuffer.makeComputeCommandEncoder() else { return RetCode.CannotCreateCommandEncoder.rawValue }
+    //guard let buffs         = session.buffs else { return RetCode.NotReadyToRun.rawValue }
+    
     do {
         let pipelineState = try lDevice.makeComputePipelineState(function:lFunction)
         encoder.setComputePipelineState(pipelineState);
-        encoder.setBuffer(lInputBuffer, offset: 0, index: 0)
-        encoder.setBuffer(lOutputBuffer, offset: 0, index: 1)
+
+        for (index, buff) in session!.buffs {
+            encoder.setBuffer(buff.buff, offset: 0, index: index)
+        }
+        
         let w = pipelineState.threadExecutionWidth
         let h = pipelineState.maxTotalThreadsPerThreadgroup / w
-        let numThreadgroups = MTLSize(width: (kcount+(w*h-1))/(w*h), height: 1, depth: 1)
+
+        // Element-wise
+        let numThreadgroups       = MTLSize(width: (kcount+(w*h-1))/(w*h), height: 1, depth: 1)
         let threadsPerThreadgroup = MTLSize(width: w*h, height: 1, depth: 1)
+        
         encoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerThreadgroup)
         encoder.endEncoding()
+        
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
     } catch {
         return RetCode.CannotCreatePipelineState.rawValue
     }
 
-    readyToRetrieve = true
+    session!.readyToRetrieve = true
     return RetCode.Success.rawValue
 }
 
 @_cdecl("clm_retrieve")
-public func clm_retrieve(ocount:Int, output: UnsafeMutableRawPointer) -> Int {
-    guard readyToRetrieve else { return RetCode.NotReadyToRetrieve.rawValue }
-    guard ocount == outputCount else { return RetCode.IncorrectOutputCount.rawValue }
-    guard let lOutputBuffer = outputBuffer else { return RetCode.NotReadyToRetrieve.rawValue }
-    
-    output.copyMemory(from: lOutputBuffer.contents(), byteCount: outputCount * outputStride)
+public func clm_retrieve(nth:Int, output: UnsafeMutableRawPointer) -> Int {
+    let session = globalDeviceSession
+    guard session != nil           else { return RetCode.NotReadyToCompile.rawValue }
+    guard session!.readyToRetrieve else { return RetCode.NotReadyToRetrieve.rawValue }
+
+    let target = session!.buffs[nth]
+    output.copyMemory(from: target!.buff.contents(), byteCount: target!.count * target!.stride)
     return RetCode.Success.rawValue
 }
 
@@ -337,11 +350,3 @@ public func clm_get_compile_error() -> UnsafeMutablePointer<CChar> {
     return strdup(compileError)
 }
 
-// TODO
-
-// A process of calling metal function
-//  1. Initialize a pipeline
-//  2. Iterate for Nargs:
-//        [clm_alloc] -> [clm_add_to_pipeline]
-//  3. call clm_commit_kernel
-//  4. call clm_retrieve

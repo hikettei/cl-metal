@@ -14,11 +14,11 @@
   :components
   ((:file "source/package")
    (:file "source/utils")
+   (:file "source/metallib")
+   (:file "source/metalize" :depends-on ("source/defkernel"))
+   (:file "source/defkernel")
    (:file "source/bindings")
    (:file "source/retcode")
-   (:file "source/metallib")
-   (:file "source/metalize")   
-   (:file "source/defkernel")
    )
 
   :in-order-to

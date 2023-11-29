@@ -57,18 +57,17 @@ https://bugs.launchpad.net/sbcl/+bug/1519630"
      (clm-load-from-metallib pathname fname))))
 
 (defcfun "clm_alloc" :int
-  (icount :int)
-  (input  :pointer)
-  (idtype :int)
-  (ocount :int)
-  (oformat :int))
+  (nth    :int)     ;; nth buffer?
+  (icount :int)     ;; a size of tensor
+  (input  :pointer) ;; cffi:foreign-pointer
+  (idtype :int))    ;; a fixnum indicating the dtype
 
 (defcfun "clm_run" :int
   (kcount :int))
 
 (defcfun "clm_retrieve" :int
-  (ocount :int)
-  (obuff  :pointer))
+  (nth-buff :int)
+  (obuff    :pointer))
 
 (defcfun "clm_get_compile_error" :string)
 
@@ -80,3 +79,4 @@ https://bugs.launchpad.net/sbcl/+bug/1519630"
   (with-swift-float-mode
     (clm-get-device idx)))
 
+(defcfun "clm_reset_buffer" :int)

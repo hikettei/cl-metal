@@ -66,46 +66,80 @@ Return -> Metallib"
   ;; LISP-like DSL -> Metal
   (make-metallib
    :load-state :not-yet-compiled
-   :args   args
+   :args   (map 'list #'parse-marg args args (range 0 (length args)))
    :fname  fname
    :source source))
 
 ;; Inlined make-metal compilation
-(define-compiler-macro make-metal (fname args source)
-  (%make-metal-inlined fname args source))
+;;(define-compiler-macro make-metal (fname args source)
+;;  (%make-metal-inlined fname (map 'list #'parse-marg args (range 0 (length args))) source))
 
-;; [TODO] Multiple Arguments
-(defun funcall-metal (metal out-buffer in-buffer)
+(defun funcall-metal (metallib &rest args)
   "Invokes the kernel described in metal"
-  (declare (type Metallib metal))
+  (declare (type Metallib metallib))
 
   ;; Ensures the function can be loaded?
   (with-swift-float-mode
-    (ecase (metallib-load-state metal)
+    (ecase (metallib-load-state metallib)
       (:not-yet-compiled
        (%compile-metal-kernel
-	(metallib-source metal)
-	(metallib-fname  metal)))
+	(metallib-source metallib)
+	(metallib-fname  metallib)))
       (:compiled-metallib
-       (if (probe-file (metallib-pathname metal)) ;; Does the cached .metalib still exist?
+       (if (probe-file (metallib-pathname metallib)) ;; Does the cached .metalib still exist?
 	   ;; Loading a cache stored in .cl_metal_cache
 	   (clm-load-from-metallib
-	    (metallib-pathname metal)
-	    (metallib-fname    metal))
+	    (metallib-pathname metallib)
+	    (metallib-fname    metallib))
 	   ;; Compiling again
 	   (%compile-metal-kernel
-	    (metallib-source metal)
-	    (metallib-fname  metal)))))
+	    (metallib-source metallib)
+	    (metallib-fname  metallib)))))
 
-    ;; Commits the function
-    (with-pointer-to-vector-data (in* in-buffer)
-      (with-pointer-to-vector-data (out* out-buffer)      
-	(clm-alloc (array-total-size in-buffer)
-		   in*
-		   (type2iformat (aref in-buffer 0))
-		   (array-total-size out-buffer)
-		   (type2iformat (aref out-buffer 0)))
-	(clm-run 1)
-	(clm-retrieve (array-total-size out-buffer) out*)))
-    out-buffer))
+    (assert (= (length args)
+	       (length (metallib-args metallib)))
+	    ()
+	    "funcall-metal: The number of arguments is invaild: got ~a expected ~a"
+	    (length args)
+	    (length (metallib-args metallib)))
+    
+    ;; 1. Initialize all buffers
+    (clm-reset-buffer)
+    ;; 2. Send all pointers and sync with buffers
+    (labels ((send (count rest-arr buff-list)
+	       (if (null rest-arr)
+		   (progn
+		     ;; 3. Finally (after confirmed all buffers are sent)
+		     ;; Commits the function
+		     (clm-run 1)
+
+		     ;; 4. Retreive all results
+		     ;; metal-funcall returns a list of tensors whose state = :out or :io
+		     (apply
+		      #'values
+		      (loop for arg in (metallib-args metallib)
+			    for buf in buff-list
+			    for arr in args
+			    for nth upfrom 0
+			    if (or (eql (marg-state arg) :out)
+				   (eql (marg-state arg) :io))
+			      collect (and
+				       (clm-retrieve nth buf)
+				       arr))))
+		   
+		   ;; the function send seems a little weird:
+		   ;;  is there cffi:with-pointer-to-vector-data but a function version??		    
+		   (with-pointer-to-vector-data
+		       (bind* (car rest-arr))
+		     (clm-alloc
+		      count
+		      (array-total-size (aref (car rest-arr) 0))
+		      bind*
+		      (type2iformat (aref (car rest-arr) 0)))
+		     (send
+		      (1+ count)
+		      (cdr rest-arr)
+		      `(,@buff-list ,bind*))))))
+      (send 0 args nil))))
+
 
