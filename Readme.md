@@ -41,7 +41,9 @@ $ make build
 
 - :cl-metal.math
 
-- F16
+- cl-waffe2, MetalTensor backend
+
+- Creating a DSL (like mgl-mat) with a state of :direction = :in, :out. or keep compatiblity with cl-cuda?
 
 ## Environments
 

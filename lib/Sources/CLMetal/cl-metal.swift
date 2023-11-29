@@ -337,3 +337,11 @@ public func clm_get_compile_error() -> UnsafeMutablePointer<CChar> {
     return strdup(compileError)
 }
 
+// TODO
+
+// A process of calling metal function
+//  1. Initialize a pipeline
+//  2. Iterate for Nargs:
+//        [clm_alloc] -> [clm_add_to_pipeline]
+//  3. call clm_commit_kernel
+//  4. call clm_retrieve

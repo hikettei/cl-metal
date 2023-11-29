@@ -7,14 +7,18 @@
 	       #:alexandria
 	       #:mgl-pax
 	       #:rove
+	       #:cl-ppcre
 	       #:uiop
-	       #:float-features)
+	       #:float-features
+	       #:trivia #:trivia.ppcre)
   :components
   ((:file "source/package")
+   (:file "source/utils")
    (:file "source/bindings")
    (:file "source/retcode")
    (:file "source/metallib")
-
+   (:file "source/metalize")   
+   (:file "source/defkernel")
    )
 
   :in-order-to

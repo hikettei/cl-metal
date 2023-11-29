@@ -5,7 +5,10 @@
   "(I don't completely understand why but) on SBCL, regardless of what functions to use,
 calling a function declared in `cl-metal.swift` with MetalKIT API, always produces a floating-overflow.
 Anyway mask traps on SBCL.
-When calling foreign function using such apis, wrap the code with this macro."
+When calling foreign function using such apis, wrap the code with this macro.
+
+(Could be) somethings to do with:
+https://bugs.launchpad.net/sbcl/+bug/1519630"
   #+sbcl`(with-float-traps-masked t ,@body)
   #+(not sbcl)`(progn ,@body))
 
@@ -17,7 +20,6 @@ When calling foreign function using such apis, wrap the code with this macro."
 (defcfun "clm_set_device" :int
   (device-index :int))
 
-;; [TODO] Docs, pax
 (defun get-n-device ()
   "Counts the number of gpus[fixnum] installed on the device"
   (with-swift-float-mode
@@ -27,8 +29,8 @@ When calling foreign function using such apis, wrap the code with this macro."
   "Explicts the gpu to use (get-n-device to know how many devices are installed)"
   (declare (type (unsigned-byte 64) device-idx))
   (with-swift-float-mode
-    (let ((retcode (clm-set-device device-idx)))
-      (return-with-retcode retcode))))
+    (return-with-retcode
+     (clm-set-device device-idx))))
 
 ;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ;;  dynamically loading .metalib 
@@ -74,5 +76,7 @@ When calling foreign function using such apis, wrap the code with this macro."
   (device-idx :int))
 
 (defun get-device (idx)
+  "Returns a string indicating the status of gpu[idx]"
   (with-swift-float-mode
     (clm-get-device idx)))
+

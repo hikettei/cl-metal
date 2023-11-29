@@ -6,9 +6,10 @@
   (defstruct Metallib
     "Stores the cached function of metal"
     (load-state :not-yet-compiled :type (member :not-yet-compiled :compiled-metallib))
+    (args     nil :type list)
     (fname    ""  :type string)
     (pathname nil :type (or null string))
-    (source  "" :type string))
+    (source   ""  :type string))
 
   (defun make-cached-metallib (fname source)
     (let* ((base-path   (format nil "./.cl_metal_tmp/cached_~a" fname))
@@ -47,27 +48,33 @@
 	  (run-cmd cmd2))
 	lib-path)))
 
-  (defun %make-metal-inlined (fname source)
+  (defun %make-metal-inlined (fname args source)
     (let ((lib-path (make-cached-metallib fname source)))
       `(make-metallib
 	:load-state :compiled-metallib
-	:fname   ,fname
-	:source  ,source
+	:args     ',args
+	:fname    ,fname
+	:source   ,source
 	:pathname ,lib-path))))
 
-(defun make-metal (fname source)
+(defun make-metal (fname args source)
   "Embeds a metal code in Common Lisp. If the function can be reached in the toplevel, the compilation is inlined.
 Return -> Metallib"
   (declare (type string fname source))
+  ;; TODO
+  ;; Appending #include ... namespace metal ...
+  ;; LISP-like DSL -> Metal
   (make-metallib
    :load-state :not-yet-compiled
+   :args   args
    :fname  fname
    :source source))
 
 ;; Inlined make-metal compilation
-(define-compiler-macro make-metal (fname source)
-  (%make-metal-inlined fname source))
+(define-compiler-macro make-metal (fname args source)
+  (%make-metal-inlined fname args source))
 
+;; [TODO] Multiple Arguments
 (defun funcall-metal (metal out-buffer in-buffer)
   "Invokes the kernel described in metal"
   (declare (type Metallib metal))

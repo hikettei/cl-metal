@@ -5,6 +5,7 @@
   ;; The metal code below is inlined:
   (make-metal
    "fsin"
+   `((invector T :input) (outVector T :output))
    "
 #include <metal_stdlib>
 
