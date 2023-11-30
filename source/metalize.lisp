@@ -87,20 +87,3 @@
 	   "}")))
     metalized-form))
 
-(print
- (with-metalize 
-     (setf (aref a idx) (+ (aref a idx) (sin (aref b idx 0))))
-   (+ 1 (* 2 (- 3 1 a)))
-   (+ 1 (* 2 (- 3 1 a)))
-   (sin 1)
-   (= a 1)
-   (*= a b)
-   "A"
-   (> 2 3)
-   (progn
-     (print 1)
-     (print 2))
-   (if (> (aref a i) (aref b i))
-       (progn
-	 (setf (aref a idx) (aref b idx))))))
-

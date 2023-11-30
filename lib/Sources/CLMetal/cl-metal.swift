@@ -101,6 +101,7 @@ class DeviceSession {
 
 var globalDeviceSession:DeviceSession?
 var compileError:String = ""
+var globalCurrentDeviceIdx:Int = 0
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -128,7 +129,7 @@ public func clm_set_device(device_index:Int) -> Int {
 
     // Updating Global Session:
     globalDeviceSession = DeviceSession(newDevice, newCommandQueue)
-    
+    globalCurrentDeviceIdx = device_index
     return RetCode.Success.rawValue
 }
 
@@ -212,11 +213,11 @@ public func clm_load_from_metallib(metallibPath: UnsafePointer<CChar>, fnameRaw:
     let fName = String(cString: fnameRaw)
     
     do {
-        let newLibrary = try lDevice.makeLibrary(filepath: path)
+        let newLibrary        = try lDevice.makeLibrary(filepath: path)
         guard let newFunction = newLibrary.makeFunction(name: fName) else { return RetCode.FailedToFindFunction.rawValue }
 
         // updating two global variables: library and function
-        session!.library = newLibrary
+        session!.library  = newLibrary
         session!.function = newFunction
     } catch {
         return RetCode.FailedToLoadLibrary.rawValue
@@ -264,7 +265,18 @@ public func clm_reset_buffer() -> Int {
     let session = globalDeviceSession
     guard session != nil else { return RetCode.NotReadyToCompile.rawValue }
     session!.buffs  = [:]
-    return 0
+    session!.readyToCompile  = true
+    session!.readyToCompute  = false
+    session!.readyToRun      = false
+    session!.readyToRetrieve = false
+
+    //guard let newCommandQueue = session!.device!.makeCommandQueue() else {
+    //    return RetCode.CannotCreateCommandQueue.rawValue
+    //}
+
+    //session!.commandQueue = newCommandQueue
+    
+    return 0//clm_set_device(device_index: globalCurrentDeviceIdx)
 }
 
 @available(macOS 11.0, *)

@@ -46,7 +46,7 @@
 			    (alexandria:read-stream-content-into-string error-output))))))
 	  (run-cmd cmd1)
 	  (run-cmd cmd2))
-	lib-path)))
+	(namestring (truename lib-path)))))
 
   (defun %make-metal-inlined (fname args source)
     (let ((lib-path (make-cached-metallib fname source)))
@@ -74,14 +74,18 @@ Return -> Metallib"
 ;;(define-compiler-macro make-metal (fname args source)
 ;;  (%make-metal-inlined fname (map 'list #'parse-marg args (range 0 (length args))) source))
 
+;; Memo: templates can't be used without additional compilation?
 (defun funcall-metal (metallib &rest args)
   "Invokes the kernel described in metal"
   (declare (type Metallib metallib)
 	   ;;(optimize (speed 3))
 	   )
-
   ;; Ensures the function can be loaded?
   (with-swift-float-mode
+    ;; 1. Initialize all buffers
+    (return-with-retcode
+     (clm-reset-buffer))
+    
     (ecase (metallib-load-state metallib)
       (:not-yet-compiled
        (%compile-metal-kernel
@@ -90,9 +94,12 @@ Return -> Metallib"
       (:compiled-metallib
        (if (probe-file (metallib-pathname metallib)) ;; Does the cached .metalib still exist?
 	   ;; Loading a cache stored in .cl_metal_cache
-	   (clm-load-from-metallib
-	    (metallib-pathname metallib)
-	    (metallib-fname    metallib))
+	   (return-with-retcode
+	    (clm-load-from-metallib
+	     (metallib-pathname metallib)
+	     (metallib-fname    metallib))
+	    :load-path
+	    (metallib-pathname metallib))
 	   ;; Compiling again
 	   (%compile-metal-kernel
 	    (metallib-source metallib)
@@ -104,21 +111,22 @@ Return -> Metallib"
 	    "funcall-metal: The number of arguments is invaild: got ~a expected ~a"
 	    (length args)
 	    (length (metallib-args metallib)))
-
-    ;; fixme
-    ;; args = thread-idx arg argとかになったら順番ずれる
     
-    ;; 1. Initialize all buffers
-    (clm-reset-buffer)
+    ;; Arguments are lined in this rule:
+    ;;  [buff1 buff2 buff3 ... thread_position_in_grid]
+    ;;  As of now, thread_position_in_grid comes last; this could come in the first args in the future release
+    ;; ^ [FIXME]
+    
+    
     ;; 2. Send all pointers and sync with buffers
     (labels ((send (count rest-arr buff-list)
 	       (if (null rest-arr)
 		   (progn
-		     ;; 3. Finally (after confirmed all buffers are sent)
+		     ;; 3. Finally (after confirmed all buffers are sent to swift api)
 		     ;; Commits the function
-		     (clm-run 1)
-
-		     ;; 4. Retreive all results
+		     (return-with-retcode
+		      (clm-run 1))
+		     ;; 4. Retreive and copy all buffers to the output
 		     ;; metal-funcall returns a list of tensors whose state = :out or :io
 		     (apply
 		      #'values
@@ -129,21 +137,22 @@ Return -> Metallib"
 			    if (or (eql (marg-state arg) :out)
 				   (eql (marg-state arg) :io))
 			      collect (and
-				       (clm-retrieve nth buf)
+				       (return-with-retcode
+					(clm-retrieve nth buf))
 				       arr))))
 		   
 		   ;; the function send seems a little weird:
 		   ;;  is there cffi:with-pointer-to-vector-data but a function version??
 		   (with-pointer-to-vector-data (bind* (car rest-arr))
-		     (clm-alloc
-		      count
-		      (array-total-size (car rest-arr))
-		      bind*
-		      (type2iformat (aref (car rest-arr) 0)))
+		     (return-with-retcode
+		      (clm-alloc
+		       count
+		       (array-total-size (car rest-arr))
+		       bind*
+		       (type2iformat (aref (car rest-arr) 0))))
 		     (send
 		      (1+ count)
 		      (cdr rest-arr)
 		      `(,@buff-list ,bind*))))))
       (send 0 args nil))))
-
 

@@ -1,7 +1,9 @@
 
 (in-package :cl-metal)
 
-(defun return-with-retcode (retcode)
+(defun return-with-retcode (retcode
+			    &key
+			      (load-path ""))
   (declare (type fixnum retcode))
   ;; 0 -> Succeed, returning T
   ;; otherwise -> something went wrong; reporing the detail
@@ -45,11 +47,11 @@ The name of function described in the source must correspond with function-name"
     (-15
      (error "UnsupportedOutputFormat"))
     (-16
-     (error "FailedToLoadLibrary"))
+     (error "FailedToLoadLibrary: ~a" load-path))
     (-17
      (error "NotReadyToRun"))
     (T
-     (error "cl-metal: failed with unknown RetCode ~a" retcode))))
+     (error "cl-metal: failed with unknown RetCode ~a" retcode))))	   
 
 (defun type2iformat (test-element)
   (etypecase test-element
