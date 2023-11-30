@@ -38,3 +38,11 @@
   (asdf:test-op (o s)
 		(uiop:symbol-call (find-package :rove) :run :cl-metal/test)))
 
+(asdf:defsystem :cl-metal/examples
+  :description "Includes a demonstration of cl-metal"
+  :author      "hikettei <ichndm@gmail.com>"
+  :licence     "MIT"
+  :depends-on  (#:cl-metal #:numcl)
+  :components
+  ((:file "examples/mandelbrot")))
+

@@ -14,7 +14,13 @@
       (= '==)
       (T symbol)))
   
-  (defun metalize-form (form)
+  (defun metalize-form (form
+			&aux
+			  (form
+			   ;; Interning all symbols
+			   (let ((*package* (find-package :cl-metal)))
+			     (read-from-string
+			      (format nil "~a" form)))))
     (trivia:ematch form
       ;; arithmetic
       ((list* (or '+ '- '* '/ '> '>= '< '<= '=) _)
@@ -49,6 +55,15 @@
       ;; progn -> { forms }
       ((list* 'progn _)
        (format nil "{~%~a}" (map-split1 #.(format nil ";~%") #'metalize-form (cdr form))))
+      ((list* (or 'let 'let*) _)
+       (let ((bindings (second form))
+	     (body     (cddr   form)))
+	 (with-output-to-string (tmp)
+	   (loop for bind in bindings do
+	     (format tmp "auto ~a = ~a;~%"
+		     (metalize-form (car bind))
+		     (metalize-form (second bind))))
+	   (format tmp "~a" (metalize-form `(progn ,@body))))))
       ;; aref -> A[idx]
       ((list* 'aref (type symbol) _)
        (format nil "~a[~a]"

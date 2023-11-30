@@ -15,7 +15,6 @@
 (deftest running-simple-kernel
   (ok
    (progn
-     ;;(use-device 0)
      (let* ((a   (make-array 10
 			     :element-type 'single-float
 			     :initial-element 1.0))
@@ -27,7 +26,6 @@
        (every #'(lambda (x) (= x 0.841471)) b))))
   (ok
    (progn
-     ;;(use-device 0)
      (let* ((a   (make-array 12
 			     :element-type 'single-float
 			     :initial-element 1.0))

@@ -116,13 +116,21 @@
 	    (map-split ", " #'marg-as-string args)
 	    metalized-form))
 
-  (defun eval-metal-form (metal-forms)
+  (defun eval-metal-form (metal-forms metalize-p)
     (let ((results
 	    (loop for form in metal-forms
 		  if (= (length metal-forms) 1)
-		    collect (eval form)
+		    collect
+		    (if metalize-p
+			(eval `(with-metalize ,form))
+			(eval form))
 		  else
-		    append (list (eval form) #.(format nil ";~%")))))
+		    append
+		    (list
+		     (if metalize-p
+		        (eval `(with-metalize ,form))
+			(eval form))
+		     #.(format nil ";~%")))))
       (apply #'concatenate 'string results))))
 
 (defmacro define-kernel
@@ -132,7 +140,8 @@
 	(utils "")
 	(template nil)
 	(includes         `("<metal_stdlib>"))
-	(using-namespaces `("metal")))
+	(using-namespaces `("metal"))
+	(mode :metal))
      (return-type (&rest args))
      &rest metalized-form)
   "Defines an inlined metal kernel from a given string:
@@ -150,6 +159,7 @@ Example:
 If metalized-form is multiple, each result is concatenated with merging newline+;
 (TODO Docs)
 "
+  (declare (type (member :metal :lisp) mode))
   (let* ((margs (loop for nth upfrom 0
 		      for arg in args
 		      collect
@@ -163,7 +173,7 @@ If metalized-form is multiple, each result is concatenated with merging newline+
 	    :using-namespaces using-namespaces
 	    :return-type return-type
 	    :args `(,@margs ,(parse-marg `(,thread-position-in-grid thread-position-in-grid)))
-	    :metalized-form (eval-metal-form metalized-form))))
+	    :metalized-form (eval-metal-form metalized-form (eql mode :lisp)))))
     `(defun ,function-name (,@(map 'list #'car args))
        (funcall-metal
 	,(%make-metal-inlined
@@ -178,9 +188,12 @@ If metalized-form is multiple, each result is concatenated with merging newline+
 	(utils "")
 	(template nil)
 	(includes        `("<metal_stdlib>"))
-	(using-namespaces `("metal")))
+	(using-namespaces `("metal"))
+	(mode :metal))
      (return-type (&rest args))
      &rest metalized-form)
+  "docs"
+  (declare (type (member :metal :lisp) mode))
   (let* ((margs (loop for nth upfrom 0
 		      for arg in args
 		      collect
@@ -195,7 +208,7 @@ If metalized-form is multiple, each result is concatenated with merging newline+
 	    :using-namespaces using-namespaces
 	    :return-type return-type
 	    :args `(,@margs ,(parse-marg `(,thread-position-in-grid thread-position-in-grid)))
-	    :metalized-form (eval-metal-form metalized-form))))
+	    :metalized-form (eval-metal-form metalized-form (eql mode :lisp)))))
     (%make-metal-inlined
      fname
      args
