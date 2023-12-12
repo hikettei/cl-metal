@@ -22,6 +22,9 @@
 			     (read-from-string
 			      (format nil "~a" form)))))
     (trivia:ematch form
+      ;; (- a) -> -a
+      ((list* '- form)
+       (format nil "-~a" (metalize-form (car form))))
       ;; arithmetic
       ((list* (or '+ '- '* '/ '> '>= '< '<= '=) _)
        (flet ((helper (prev b)
@@ -32,6 +35,11 @@
 			(cSymbol (car form))
 			(metalize-form b))))
 	 (format nil "~a" (reduce #'helper (cdr form)))))
+      ;; (expt a b) -> a^b
+      ((list 'expt a b)
+       (format nil "pow(~a, ~a)"
+	       (metalize-form a)
+	       (metalize-form b)))
       ;; A = B, A+=B, A-=B, A*=B, A/=B
       ((list (or 'incf 'decf 'setf 'mulcf 'divcf) form1 form2)
        (format nil
@@ -83,7 +91,7 @@
       ;;string
       ((type string) (format nil "\"~a\"" form))
       (_
-       (warn "metalize-form: Can't deal with this form: ~a" form)
+       (warn "metalize-form: Cannot deal with this form: ~a" form)
        (format nil "~a" form)))))
 
 

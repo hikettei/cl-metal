@@ -44,5 +44,7 @@
   :licence     "MIT"
   :depends-on  (#:cl-metal #:numcl)
   :components
-  ((:file "examples/mandelbrot")))
+  ((:file "examples/mandelbrot")
+   (:file "examples/benchmark")
+   ))
 

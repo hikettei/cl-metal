@@ -20,18 +20,3 @@
     "float done = 0.0, steps = 1.0, az = 0.0"
     )
 
-
-(define-kernel (fused-relu :thread-position-in-grid id :mode :lisp)
-    (void ((x* float :io)))
-    (if (> (aref x id) 0.0)
-	(setf (aref x id) 1.0)
-	(setf (aref x id) 0.0)))
-
-
-(defun test ()
-  (multiple-value-bind (x storage) (numcl:uniform -1.0 1.0 `(10 10))
-    ;;(print x)
-    (time (fused-relu storage))
-    nil))
-
-(print (test))

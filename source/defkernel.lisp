@@ -119,17 +119,16 @@
   (defun eval-metal-form (metal-forms metalize-p)
     (let ((results
 	    (loop for form in metal-forms
+		  for evaluated-form = (eval (if metalize-p
+						 `(with-metalize ,form)
+						 form))
 		  if (= (length metal-forms) 1)
 		    collect
-		    (if metalize-p
-			(eval `(with-metalize ,form))
-			(eval form))
+		  evaluated-form
 		  else
 		    append
 		    (list
-		     (if metalize-p
-		        (eval `(with-metalize ,form))
-			(eval form))
+		     evaluated-form
 		     #.(format nil ";~%")))))
       (apply #'concatenate 'string results))))
 
