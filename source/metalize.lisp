@@ -98,8 +98,8 @@
 ;; [TODO]
 ;;  - Testing
 ;;  - Complete all specs
-;;  - docs
-;;  - compatible with cl-cuda
+;;  - docstrings
+;;  - prepare compatible specifications with cl-cuda
 
 (defmacro with-metalize (&rest forms)
   "[Experimental] Translates the given S-expressions into a metal expression"

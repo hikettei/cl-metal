@@ -61,16 +61,13 @@
   "Embeds a metal code in Common Lisp. If the function can be reached in the toplevel, the compilation is inlined.
 Return -> Metallib"
   (declare (type string fname source))
-  ;; TODO
-  ;; Appending #include ... namespace metal ...
-  ;; LISP-like DSL -> Metal
   (make-metallib
    :load-state :not-yet-compiled
    :args   (map 'list #'parse-marg args args (range 0 (length args)))
    :fname  fname
    :source source))
 
-;; Inlined make-metal compilation
+;; Inlined make-metal compilation is deprecated (-> use defkernel/kernel-lambda instead)
 ;;(define-compiler-macro make-metal (fname args source)
 ;;  (%make-metal-inlined fname (map 'list #'parse-marg args (range 0 (length args))) source))
 
@@ -81,6 +78,8 @@ Return -> Metallib"
 	   ;;(optimize (speed 3))
 	   )
   ;; Ensures the function can be loaded?
+  ;; TODO: Add a type check (compared with metallib description)
+  
   (with-swift-float-mode
     ;; 1. Initialize all buffers
     (return-with-retcode

@@ -2,6 +2,32 @@
 (in-package :cl-metal)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *input-attributes*
+    `(dispatch-quadgroups-per-threadgroup
+      dispatch-simdgroups-per-threadgroup
+      dispatch-threads-per-threadgroup
+      grid-origin
+      grid-size
+      quadgroup-index-in-threadgroup
+      quadgroups-per-threadgroup
+      simdgroup-index-in-threadgroup
+      simdgroups-per-threadgroup
+      thread-execution-width
+      thread-index-in-quadgroup
+      thread-index-in-simdgroup
+      thread-index-in-threadgroup
+      thread-position-in-grid
+      thread-position-in-threadgroup
+      threadgroup-position-in-grid
+      threadgroups-per-grid
+      threads-per-grid
+      threads-per-simdgroup
+      threads-per-threadgroup)
+    "Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf, Table5.8, Attributes for kernel function input arguments.")
+
+  (defun butnil (list)
+    (loop for l in list if l collect l))
+  
   (defun cName (base-char)
     (cl-ppcre:regex-replace-all
      "-"
@@ -42,12 +68,41 @@
 	     (eql :in)
 	     (eql :out)
 	     (eql :io))))
+
+  (defun translate-attribute-name (buffer)
+    "thread-position-in-grid -> (thread_position_in_grid uint)
+Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf, Table5.8, Attributes for kernel function input arguments."
+    (values
+     (cName buffer)
+     (alexandria:switch ((cName buffer) :test #'equal)
+       ("dispatch_quadgroups_per_threadgroup" "uint")
+       ("dispatch_simdgroups_per_threadgroup" "uint")
+       ("dispatch_threads_per_threadgroup"    "uint3")
+       ("grid_origin"                         "uint3")
+       ("grid_size"                           "int3")
+       ("quadgroup_index_in_threadgroup"      "uint")
+       ("quadgroups_per_threadgroup"          "uint")
+       ("simdgroup_index_in_threadgroup"      "uint")
+       ("simdgroups_per_threadgroup"          "uint")
+       ("thread_execution_width"              "uint")
+       ("thread_index_in_quadgroup"           "uint")
+       ("thread_index_in_simdgroup"           "uint")
+       ("thread_index_in_threadgroup"         "uint")
+       ("thread_position_in_grid"             "uint")
+       ("thread_position_in_threadgroup"      "uint")
+       ("threadgroup_position_in_grid"        "uint")
+       ("threadgroups_per_grid"               "uint")
+       ("threads_per_grid"                    "uint")
+       ("threads_per_simdgroup"               "uint")
+       ("threads_per_threadgroup"             "uint")
+       (T
+	(error "translate-attribute-name: Unknown attribute ~a" buffer)))))
   
   (defun parse-marg (form &optional (buffer-n nil) (template nil))
     "the form is given as one of:
-- (varName dType io)
-- (varName* dtype io)
-- (bind    thread-position-in-grid)"
+- (varName  dType :io) -> scalar  \
+- (varName* dtype :io) -> pointer / [[ buffer(n) ]] is assigned
+- (bind    thread-position-in-grid) ->[[ thread-position-in-grid ]] is assigned"
     (trivia:ematch form
       ((list (type symbol) (type symbol) (IOKeyword))
        (make-marg
@@ -60,15 +115,12 @@
 	    (error "parse-margs: the position of buffer needs to be explicted for ~a" form))
 	:pointer-p (pointer-p (car form))))
       ((list (type symbol) (type symbol))
-       (make-marg (first form)
-		  "uint" nil nil
-		  :description
-		  (alexandria:switch ((cName (second form)) :test #'equal)
-		    ("thread_position_in_grid"
-		     "thread_position_in_grid")
-		    (T
-		     (warn "Unrecognised keyword: ~a" (second form))
-		     (cName (second form))))))))
+       (multiple-value-bind (pname type) (translate-attribute-name (second form))
+	 (make-marg (first form)
+		    type
+		    nil
+		    nil
+		    :description pname)))))
 
   (defun marg-as-string (marg)
     (declare (type Marg marg))
@@ -133,14 +185,16 @@
       (apply #'concatenate 'string results))))
 
 (defmacro define-kernel
-    ((function-name
-      &key
-	(thread-position-in-grid 'id)
-	(utils "")
-	(template nil)
-	(includes         `("<metal_stdlib>"))
-	(using-namespaces `("metal"))
-	(mode :metal))
+    (#.`(function-name
+	 &key
+	   ;; Collecting attributes declared in the toplevel.
+	   ,@(loop for attribute in *input-attributes*
+		   collect `(,attribute))
+	   (utils "")
+	   (template nil)
+	   (includes         `("<metal_stdlib>"))
+	   (using-namespaces `("metal"))
+	   (mode :metal))
      (return-type (&rest args))
      &rest metalized-form)
   "Defines an inlined metal kernel from a given string:
@@ -171,7 +225,14 @@ If metalized-form is multiple, each result is concatenated with merging newline+
 	    :includes includes
 	    :using-namespaces using-namespaces
 	    :return-type return-type
-	    :args `(,@margs ,(parse-marg `(,thread-position-in-grid thread-position-in-grid)))
+	    :args (append
+		   `(,@margs)
+		   (butnil
+		    #.`(list
+			,@(loop for attr in *input-attributes*
+				collect
+				`(when ,attr
+				   (parse-marg (list ,attr ',attr)))))))
 	    :metalized-form (eval-metal-form metalized-form (eql mode :lisp)))))
     `(defun ,function-name (,@(map 'list #'car args))
        (funcall-metal
@@ -182,16 +243,18 @@ If metalized-form is multiple, each result is concatenated with merging newline+
 	,@(map 'list #'car args)))))
 
 (defmacro kernel-lambda
-    ((&key
-	(thread-position-in-grid 'id)
-	(utils "")
-	(template nil)
-	(includes        `("<metal_stdlib>"))
-	(using-namespaces `("metal"))
-	(mode :metal))
+    (#.`(&key
+	   ;; Collecting attributes declared in the toplevel.
+	   ,@(loop for attribute in *input-attributes*
+		   collect `(,attribute))
+	   (utils "")
+	   (template nil)
+	   (includes         `("<metal_stdlib>"))
+	   (using-namespaces `("metal"))
+	   (mode :metal))
      (return-type (&rest args))
      &rest metalized-form)
-  "docs"
+  "TODO: Docs"
   (declare (type (member :metal :lisp) mode))
   (let* ((margs (loop for nth upfrom 0
 		      for arg in args
@@ -206,7 +269,14 @@ If metalized-form is multiple, each result is concatenated with merging newline+
 	    :includes includes
 	    :using-namespaces using-namespaces
 	    :return-type return-type
-	    :args `(,@margs ,(parse-marg `(,thread-position-in-grid thread-position-in-grid)))
+	    :args  (append
+		    `(,@margs)
+		    (butnil
+		     #.`(list
+			 ,@(loop for attr in *input-attributes*
+				 collect
+				 `(when ,attr
+				    (parse-marg (list ,attr ',attr)))))))
 	    :metalized-form (eval-metal-form metalized-form (eql mode :lisp)))))
     (%make-metal-inlined
      fname
