@@ -33,9 +33,7 @@
 
   (:export
    #:define-kernel
-   #:kernel-lambda)
-
-  )
+   #:kernel-lambda))
 
 (cl:in-package :cl-metal)
 

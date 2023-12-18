@@ -116,8 +116,7 @@ Return -> Metallib"
     ;;  [buff1 buff2 buff3 ... thread_position_in_grid]
     ;;  As of now, thread_position_in_grid comes last; this could come in the first args in the future release
     ;; ^ [FIXME]
-    
-    
+        
     ;; 2. Send all pointers and sync with buffers
     (labels ((send (count rest-arr buff-list)
 	       (if (null rest-arr)
@@ -137,22 +136,43 @@ Return -> Metallib"
 			    if (or (eql (marg-state arg) :out)
 				   (eql (marg-state arg) :io))
 			      collect (and
-				       (return-with-retcode
-					(clm-retrieve nth buf))
+				       (clm-retrieve nth buf)
 				       arr))))
-		   
 		   ;; the function send seems a little weird:
 		   ;;  is there cffi:with-pointer-to-vector-data but a function version??
-		   (with-pointer-to-vector-data (bind* (car rest-arr))
-		     (return-with-retcode
-		      (clm-alloc
-		       count
-		       (array-total-size (car rest-arr))
-		       bind*
-		       (type2iformat (aref (car rest-arr) 0))))
-		     (send
-		      (1+ count)
-		      (cdr rest-arr)
-		      `(,@buff-list ,bind*))))))
+		   (if (typep (car rest-arr) 'simple-array)
+		       ;; Array pointers are accesible via CFFI wrappers
+		       (with-pointer-to-vector-data (bind* (car rest-arr))
+			 (return-with-retcode
+			  (clm-alloc
+			   count
+			   (array-total-size (car rest-arr))
+			   bind*
+			   (type2iformat (aref (car rest-arr) 0))))
+			 (send
+			  (1+ count)
+			  (cdr rest-arr)
+			  `(,@buff-list ,bind*)))
+		       ;; Othewise, leave it on cffi.
+		       (if (typep (car rest-arr) 'array)
+			   (error "funcall-metal: Arrays can be only given as a simple-array. ~a" (car rest-arr))
+			   (let ((dtype (intern
+					 (string-upcase
+					  (marg-dtype (nth count (metallib-args metallib))))
+					 "KEYWORD")))
+			     (with-foreign-object (bind* dtype)
+			       ;; [TODO] if bind* is a output variable, ignore the memcpy below for optimization.
+			       (setf (mem-ref bind* dtype) (car rest-arr))
+			       ;; regarded as a scalar value:
+			       (return-with-retcode
+				(clm-alloc
+				 count
+				 1
+				 bind*
+				 (type2iformat (car rest-arr))))
+			       (send
+				(1+ count)
+				(cdr rest-arr)
+				`(,@buff-list ,bind*)))))))))
       (send 0 args nil))))
 

@@ -16,4 +16,3 @@
   (ok (eql t (use-device 0))))
 
 
-

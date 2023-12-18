@@ -81,7 +81,7 @@
 		 (:out "")
 		 (:io  ""))
 	       (marg-dtype marg)
-	       (if (marg-pointer-p marg) "*" "")
+	       (if (marg-pointer-p marg) "*" "&")
 	       (marg-varName marg)
 	       (marg-nBuffer marg)))
       ((marg :description (type string))
@@ -152,7 +152,7 @@ Example:
 (define-kernel (metal-sin
 		:thread-position-in-grid id
 		:template t)
-    (void ((a* t :in) (b* t :iout)))
+    (void ((a* t :in) (b* t :out)))
     \"b[id] = sin(a[id])\")
 ```
 If metalized-form is multiple, each result is concatenated with merging newline+;
@@ -181,7 +181,7 @@ If metalized-form is multiple, each result is concatenated with merging newline+
 	  metal-form)
 	,@(map 'list #'car args)))))
 
-(defmacro kernel-lambda 
+(defmacro kernel-lambda
     ((&key
 	(thread-position-in-grid 'id)
 	(utils "")
