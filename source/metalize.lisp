@@ -85,8 +85,8 @@
 	       (metalize-form `(progn ,@forms))))
       
       ;; (- a) -> -a
-      ((list* '- form)
-       (format nil "-~a" (metalize-form (car form))))
+      ((list '- form)
+       (format nil "-~a" (metalize-form form)))
       ;; arithmetic
       ((list* (or '+ '- '* '/ '> '>= '< '<= '=) _)
        (flet ((helper (prev b)
@@ -103,13 +103,19 @@
 	       (metalize-form a)
 	       (metalize-form b)))
       ;; A = B, A+=B, A-=B, A*=B, A/=B
-      ((list (or 'incf 'decf 'setf 'mulcf 'divcf) form1)
-       (let ((form2 (or (third form) 1)))
+      ((list (or 'incf 'decf 'mulcf 'divcf) form1)
+       (let ((form2 1))
 	 (format nil
 		 "~a ~a ~a"
 		 (metalize-form form1)
 		 (cSymbol (car form))
-		 (metalize-form form2))))
+		 (metalize-form form2))))      
+      ((list (or 'incf 'decf 'mulcf 'divcf 'setf) form1 form2)
+       (format nil
+	       "~a ~a ~a"
+	       (metalize-form form1)
+	       (cSymbol (car form))
+	       (metalize-form form2)))
       ;; (if exp then &optional else)
       ((list* 'if exp _)
        (flet ((helper (form)
