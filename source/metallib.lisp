@@ -72,7 +72,7 @@ Return -> Metallib"
 ;;  (%make-metal-inlined fname (map 'list #'parse-marg args (range 0 (length args))) source))
 
 ;; Memo: templates can't be used without additional compilation?
-(defun funcall-metal (metallib &rest args)
+(defun funcall-metal (metallib &rest args &aux (kcount 1))
   "Invokes the kernel described in metal"
   (declare (type Metallib metallib)
 	   ;;(optimize (speed 3))
@@ -124,7 +124,7 @@ Return -> Metallib"
 		     ;; 3. Finally (after confirmed all buffers are sent to swift api)
 		     ;; Commits the function
 		     (return-with-retcode
-		      (clm-run 1))
+		      (clm-run kcount))
 		     ;; 4. Retreive and copy all buffers to the output
 		     ;; metal-funcall returns a list of tensors whose state = :out or :io
 		     (apply
@@ -143,12 +143,13 @@ Return -> Metallib"
 		   (if (typep (car rest-arr) 'simple-array)
 		       ;; Array pointers are accesible via CFFI wrappers
 		       (with-pointer-to-vector-data (bind* (car rest-arr))
+			 (setq kcount (array-total-size (car rest-arr)))
 			 (return-with-retcode
 			  (clm-alloc
 			   count
 			   (array-total-size (car rest-arr))
 			   bind*
-			   (type2iformat (aref (car rest-arr) 0))))
+			   (type2iformat (car rest-arr))))
 			 (send
 			  (1+ count)
 			  (cdr rest-arr)

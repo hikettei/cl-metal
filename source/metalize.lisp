@@ -104,6 +104,12 @@
 			(metalize-form b))))
 	 (format nil "~a" (reduce #'helper (cdr form)))))
 
+      ;; the a b -> (a) b
+      ((list 'the type form)
+       (format nil "(~a)~a"
+	       (metalize-form type)
+	       (metalize-form form)))
+
       ;; (expt a b) -> a^b
       ((list (or 'expt) a b)
        (format nil "~(~a~)(~a, ~a)"

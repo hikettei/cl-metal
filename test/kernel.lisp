@@ -51,4 +51,3 @@
      (test-scalar-input a 2.0)
      (every (equivalent-to 3.0) a))))
 
-

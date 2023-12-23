@@ -54,16 +54,31 @@ The name of function described in the source must correspond with function-name"
      (error "cl-metal: failed with unknown RetCode ~a" retcode))))	   
 
 (defun type2iformat (test-element)
-  (etypecase test-element
-    (double-float 10)
-    (single-float 9)
-    ;; half-float 8
-    ((signed-byte   64) 7)
-    ((unsigned-byte 64) 6)
-    ((signed-byte   32) 5)
-    ((unsigned-byte 32) 4)
-    ((signed-byte   16) 3)
-    ((unsigned-byte 16) 2)
-    ((signed-byte   8)  1)
-    ((unsigned-byte 8)  0)))
+  (if (typep test-element 'array)
+      (or
+       (alexandria:switch ((array-element-type test-element) :test #'equal)
+	 ('double-float 10)
+	 ('single-float 9)
+	 ;; half-float 8
+	 ('(signed-byte   64) 7)
+	 ('(unsigned-byte 64) 6)
+	 ('(signed-byte   32) 5)
+	 ('(unsigned-byte 32) 4)
+	 ('(signed-byte   16) 3)
+	 ('(unsigned-byte 16) 2)
+	 ('(signed-byte   8)  1)
+	 ('(unsigned-byte 8)  0))
+       (error "couldn't identity the type of this array: ~a" test-element))
+      (etypecase test-element
+	(double-float 10)
+	(single-float 9)
+	;; half-float 8
+	((signed-byte   64) 7)
+	((unsigned-byte 64) 6)
+	((signed-byte   32) 5)
+	((unsigned-byte 32) 4)
+	((signed-byte   16) 3)
+	((unsigned-byte 16) 2)
+	((signed-byte   8)  1)
+	((unsigned-byte 8)  0))))
 
