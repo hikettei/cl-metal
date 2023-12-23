@@ -7,6 +7,29 @@ An attempt to interoperate Common Lisp Array and Metal. This (should) brings the
 
 The package would be dedicated to macOS with Apple Silicon. If you're looking for other devices, explore: [petalisp](https://github.com/marcoheisig/Petalisp/tree/master), [cl-cuda](https://github.com/takagi/cl-cuda).
 
+# At a first glance
+
+```
+(define-mfunc (aux :stream t)
+    (uint8-t ((x float :in) (y float :in) (a float :in) (b float :in) (m uint8-t :in)))
+    (if (< m 100)
+	(let ((x1 (- (* x x) (* y y) a))
+	      (y1 (- (* 2.0 x y)     b)))
+	  (if (> (+ (* x1 x1) (* y1 y1)) 4.0)
+	      m
+	      (aux x1 y1 a b (+ m 1))))
+	0))
+
+(define-kernel (mandelbrot
+		:thread-position-in-grid id
+		:using (aux)
+		:stream t)
+    (void ((x* uint8-t :out)))
+    (let ((a (/ (- (mod id 2048) 512.0) 1024.0))
+	  (b (/ (- (/   id 2048) 1024.0) 1024.0)))
+      (setf (aref x id) (aux 0.0 0.0 a b 1))))
+```
+
 ## Development
 
 ### Building libCLMetal.dylib
