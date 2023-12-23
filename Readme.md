@@ -9,7 +9,7 @@ The package would be dedicated to macOS with Apple Silicon. If you're looking fo
 
 # At a first glance
 
-```
+```lisp
 (define-mfunc (aux :stream t)
     (uint8-t ((x float :in) (y float :in) (a float :in) (b float :in) (m uint8-t :in)))
     (if (< m 100)
