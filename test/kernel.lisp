@@ -6,15 +6,15 @@
       (= x scalar)))
 
 (define-kernel (metal-sin
-		:thread-position-in-grid id)
+		:thread-position-in-grid id
+		:style :metal)
     (void ((a* float :in) (b* float :out)))
     "b[id] = sin(a[id]);")
 
 (define-kernel (metal-cos
 		:thread-position-in-grid id)
     (void ((a* float :in) (b* float :out)))
-    (with-metalize
-	(setf (aref b id) (cos (aref a id)))))
+    (setf (aref b id) (cos (aref a id))))
 
 (deftest running-simple-kernel
   (ok
@@ -41,7 +41,7 @@
        (every (equivalent-to 0.5403023) b)))))
 
 
-(define-kernel (test-scalar-input :thread-position-in-grid id :mode :lisp)
+(define-kernel (test-scalar-input :thread-position-in-grid id :style :lisp)
     (void ((x* float :io) (eff float :in)))
     (setf (aref x id) (+ (aref x id) eff)))
 

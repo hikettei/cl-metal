@@ -117,6 +117,7 @@ Return -> Metallib"
     ;; ^ [FIXME]
         
     ;; 2. Send all pointers and sync with buffers
+    
     (labels ((send (count rest-arr buff-list)
 	       (if (null rest-arr)
 		   (progn
@@ -153,25 +154,23 @@ Return -> Metallib"
 			  (cdr rest-arr)
 			  `(,@buff-list ,bind*)))
 		       ;; Othewise, leave it on cffi.
-		       (if (typep (car rest-arr) 'array)
-			   (error "funcall-metal: Arrays can be only given as a simple-array. ~a" (car rest-arr))
-			   (let ((dtype (intern
-					 (string-upcase
-					  (marg-dtype (nth count (metallib-args metallib))))
-					 "KEYWORD")))
-			     (with-foreign-object (bind* dtype)
-			       ;; [TODO] if bind* is a output variable, ignore the memcpy below for optimization.
-			       (setf (mem-ref bind* dtype) (car rest-arr))
-			       ;; regarded as a scalar value:
-			       (return-with-retcode
-				(clm-alloc
-				 count
-				 1
-				 bind*
-				 (type2iformat (car rest-arr))))
-			       (send
-				(1+ count)
-				(cdr rest-arr)
-				`(,@buff-list ,bind*)))))))))
+		       (let ((dtype (intern
+				     (string-upcase
+				      (marg-dtype (nth count (metallib-args metallib))))
+				     "KEYWORD")))
+			 (with-foreign-object (bind* dtype)
+			   ;; [TODO] if bind* is a output variable, ignore the memcpy below for optimization.
+			   (setf (mem-ref bind* dtype) (car rest-arr))
+			   ;; regarded as a scalar value:
+			   (return-with-retcode
+			    (clm-alloc
+			     count
+			     1
+			     bind*
+			     (type2iformat (car rest-arr))))
+			   (send
+			    (1+ count)
+			    (cdr rest-arr)
+			    `(,@buff-list ,bind*))))))))
       (send 0 args nil))))
 

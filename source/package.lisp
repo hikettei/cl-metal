@@ -33,7 +33,9 @@
 
   (:export
    #:define-kernel
-   #:kernel-lambda))
+   #:make-kernel
+   #:define-mfunc
+   #:make-mfunc))
 
 (cl:in-package :cl-metal)
 

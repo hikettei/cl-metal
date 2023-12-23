@@ -67,7 +67,7 @@
 	(setf (aref x id) (aref x id))
 	(setf (aref x id) 0.0))))
 
-(define-kernel (fused-relu-metal :thread-position-in-grid id :mode :lisp)
+(define-kernel (fused-relu-metal :thread-position-in-grid id)
     (void ((x* float :io)))
     (if (> (aref x id) 0.0)
 	(setf (aref x id) (aref x id))
@@ -89,7 +89,7 @@
 	     (+ xi
 		(* 0.044715 (expt xi 3)))))))))))
 
-(define-kernel (gelu-metal :thread-position-in-grid id :mode :lisp)
+(define-kernel (gelu-metal :thread-position-in-grid id)
     (void ((x* float :io)))
     (let ((xi (aref x id)))
       (setf
@@ -112,7 +112,7 @@
 			(wf:!+ x
 			       (wf:!* 0.044715 x x x)))))))
 
-(define-kernel (sigmoid-metal :thread-position-in-grid id :mode :lisp)
+(define-kernel (sigmoid-metal :thread-position-in-grid id)
     (void ((x* float :io)))
     (setf (aref x id) (/ 1 (+ 1 (exp (- (aref x id)))))))
 

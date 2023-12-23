@@ -61,14 +61,6 @@
     (pointer-p pointer-p           :type boolean)
     (description description       :type (or null string)))
 
-  (trivia:defpattern IOkeyword
-      ()
-      `(and (type keyword)
-	    (or
-	     (eql :in)
-	     (eql :out)
-	     (eql :io))))
-
   (defun translate-attribute-name (buffer)
     "thread-position-in-grid -> (thread_position_in_grid uint)
 Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf, Table5.8, Attributes for kernel function input arguments."
@@ -97,7 +89,14 @@ Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf,
        ("threads_per_threadgroup"             "uint")
        (T
 	(error "translate-attribute-name: Unknown attribute ~a" buffer)))))
-  
+
+  (trivia:defpattern IOkeyword
+      ()
+      `(and (type keyword)
+	    (or
+	     (eql :in)
+	     (eql :out)
+	     (eql :io))))
   (defun parse-marg (form &optional (buffer-n nil) (template nil))
     "the form is given as one of:
 - (varName  dType :io) -> scalar  \
@@ -121,8 +120,8 @@ Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf,
 		    nil
 		    nil
 		    :description pname)))))
-
-  (defun marg-as-string (marg)
+  
+  (defun marg-as-string-kernel (marg)
     (declare (type Marg marg))
     (trivia:ematch marg
       ((marg :state (IOKeyword) :nBuffer (type fixnum) :description (eql nil))
@@ -143,16 +142,39 @@ Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf,
 	       (marg-varName marg)
 	       (marg-description marg)))))
 
+  (defun marg-as-string-library (marg)
+    (declare (type Marg marg))
+    (trivia:ematch marg
+      ((marg :state (IOKeyword) :nBuffer (type fixnum) :description (eql nil))
+       (format nil
+	       "~a~a ~a~a"
+	       (ecase (marg-state marg)
+		 (:in  "const ")
+		 (:out "")
+		 (:io  ""))
+	       (marg-dtype marg)
+	       (if (marg-pointer-p marg) "*" "")
+	       (marg-varName marg)))
+      ((marg :description (type string))
+       (format nil
+	       "~a ~a [[ ~a ]]"
+	       (marg-dtype marg)
+	       (marg-varName marg)
+	       (marg-description marg)))))
+
   (defun %define-kernel-helper (function-name
 				&key
+				  (kernel-p t)
 				  (utils "")
 				  (template)
 				  (includes)
 				  (using-namespaces)
 				  (return-type)
 				  (args)
+				  (using)
 				  (metalized-form))
-    (format nil "~a~%~a~%~a~%~a~%kernel ~a ~a(~a) {~%~a~%}"
+    ;; INCLUDE, NAMESPACE, UTILS, USING, TEMPLATE, DEFUN ...
+    (format nil "~a~a~a~a~a~%~a~a ~a(~a) {~%~a~%}"
 	    (with-output-to-string (out)
 	      (dolist (include includes)
 		(format out "#include ~a~%" include)))
@@ -160,19 +182,30 @@ Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf,
 	      (dolist (namespace using-namespaces)
 		(format out "using namespace ~a;~%" namespace)))
 	    utils
+	    (map-split
+	     #.(format nil "~%")
+	     #'funcall
+	     using)	     
 	    (if template
 		(format nil "template <typename ~a>" (string-upcase (cName template)))
 		"")
+	    (if kernel-p
+		"kernel "
+		"static inline ")
 	    (cName return-type)
 	    (cName function-name)
-	    (map-split ", " #'marg-as-string args)
+	    (let ((mparser
+		    (if kernel-p
+			#'marg-as-string-kernel
+			#'marg-as-string-library)))
+	      (map-split ", " mparser args))
 	    metalized-form))
 
   (defun eval-metal-form (metal-forms metalize-p)
     (let ((results
 	    (loop for form in metal-forms
 		  for evaluated-form = (eval (if metalize-p
-						 `(with-metalize ,form)
+						 (eval `(with-metalize ,form))
 						 form))
 		  if (= (length metal-forms) 1)
 		    collect
@@ -184,102 +217,96 @@ Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf,
 		     #.(format nil ";~%")))))
       (apply #'concatenate 'string results))))
 
-(defmacro define-kernel
-    (#.`(function-name
-	 &key
-	   ;; Collecting attributes declared in the toplevel.
-	   ,@(loop for attribute in *input-attributes*
-		   collect `(,attribute))
-	   (utils "")
-	   (template nil)
-	   (includes         `("<metal_stdlib>"))
-	   (using-namespaces `("metal"))
-	   (mode :metal))
-     (return-type (&rest args))
-     &rest metalized-form)
-  "Defines an inlined metal kernel from a given string:
+(macrolet ((define-helper (macro-name
+			   args-head
+			   (&key
+			      (kernel-p t))
+			   &body body)
+	     `(defmacro ,macro-name
+		  ((,@args-head
+		    &key
+		      ;; Collecting attributes declared in the toplevel.
+		      ,@(when kernel-p
+			  (loop for attribute in *input-attributes*
+				collect `(,attribute)))
+		      (utils "")
+		      (using nil)
+		      (template nil)
+		      ,(if kernel-p
+			   `(includes         `("<metal_stdlib>"))
+			   `(includes))
+		      ,(if kernel-p
+			   `(using-namespaces `("metal"))
+			   `(using-namespaces nil))
+		      (style :lisp)
+		      (stream nil))
+		   (return-type (&rest args))
+		   &rest metalized-form)
+		(declare (type (member :metal :lisp) style))
+		,@body))
+	   (with-helper ((&key (kernel-p t)) &body body)
+	     `(let* ((margs (loop for nth upfrom 0
+				  for arg in args
+				  collect
+				  (parse-marg arg nth template)))
+		     (margs  (append
+			      `(,@margs)
+			      ,(when kernel-p
+				 `(butnil
+				   #.`(list
+				       ,@(loop for attr in *input-attributes*
+					       collect
+					       `(when ,attr
+						  (parse-marg (list ,attr ',attr)))))))))
+		     (metal-form
+		       (%define-kernel-helper
+			function-name
+			:kernel-p ,kernel-p
+			:utils utils
+			:template template
+			:includes includes
+			:using-namespaces using-namespaces
+			:return-type return-type
+			:args margs
+			:using using
+			:metalized-form (eval-metal-form metalized-form (eql style :lisp)))))
+		(when stream
+		  (format stream "~a" metal-form))
+		,@body)))
+  
+  (define-helper define-kernel (function-name) ()
+    "Defines an inlined metal kernel. (TODO Docstring)"
+    (with-helper ()
+      `(defun ,function-name (,@(map 'list #'car args))
+	 (funcall-metal
+	  ,(%make-metal-inlined
+	    (cName function-name)
+	    args
+	    metal-form)
+	  ,@(map 'list #'car args)))))
 
-Args = (varName Type IO) | (varName thread-position-in-grid)
+  (define-helper make-kernel () ()
+    "TODO: Docs"
+    (let ((function-name (cName (symbol-name (gensym "LAMBDA")))))
+      (with-helper ()	    
+	(%make-metal-inlined
+	 function-name
+	 args
+	 metal-form))))
+  
+  (define-helper define-mfunc (function-name) (:kernel-p nil)
+    "TODO: Docs"
+    (with-helper (:kernel-p nil)
+      ;; -> Returns a string (later embedded in metalized functions) (as long as declared in :using)
+      ;; This should be defined as a toplevel-function
+      ;; since it is embedded when compiling and inlining another metal shaders
+      `(eval-when (:compile-toplevel :load-toplevel :execute)
+	 (defun ,function-name ()
+	   ,metal-form))))
 
-Example:
-```lisp
-(define-kernel (metal-sin
-		:thread-position-in-grid id
-		:template t)
-    (void ((a* t :in) (b* t :out)))
-    \"b[id] = sin(a[id])\")
-```
-If metalized-form is multiple, each result is concatenated with merging newline+;
-(TODO Docs)
-"
-  (declare (type (member :metal :lisp) mode))
-  (let* ((margs (loop for nth upfrom 0
-		      for arg in args
-		      collect
-		      (parse-marg arg nth template)))
-	 (metal-form
-	   (%define-kernel-helper
-	    function-name
-	    :utils utils
-	    :template template
-	    :includes includes
-	    :using-namespaces using-namespaces
-	    :return-type return-type
-	    :args (append
-		   `(,@margs)
-		   (butnil
-		    #.`(list
-			,@(loop for attr in *input-attributes*
-				collect
-				`(when ,attr
-				   (parse-marg (list ,attr ',attr)))))))
-	    :metalized-form (eval-metal-form metalized-form (eql mode :lisp)))))
-    `(defun ,function-name (,@(map 'list #'car args))
-       (funcall-metal
-	,(%make-metal-inlined
-	  (cName function-name)
-	  args
-	  metal-form)
-	,@(map 'list #'car args)))))
-
-(defmacro kernel-lambda
-    (#.`(&key
-	   ;; Collecting attributes declared in the toplevel.
-	   ,@(loop for attribute in *input-attributes*
-		   collect `(,attribute))
-	   (utils "")
-	   (template nil)
-	   (includes         `("<metal_stdlib>"))
-	   (using-namespaces `("metal"))
-	   (mode :metal))
-     (return-type (&rest args))
-     &rest metalized-form)
-  "TODO: Docs"
-  (declare (type (member :metal :lisp) mode))
-  (let* ((margs (loop for nth upfrom 0
-		      for arg in args
-		      collect
-		      (parse-marg arg nth template)))
-	 (fname (cName (symbol-name (gensym "LAMBDA"))))
-	 (metal-form
-	   (%define-kernel-helper
-	    fname
-	    :utils utils
-	    :template template
-	    :includes includes
-	    :using-namespaces using-namespaces
-	    :return-type return-type
-	    :args  (append
-		    `(,@margs)
-		    (butnil
-		     #.`(list
-			 ,@(loop for attr in *input-attributes*
-				 collect
-				 `(when ,attr
-				    (parse-marg (list ,attr ',attr)))))))
-	    :metalized-form (eval-metal-form metalized-form (eql mode :lisp)))))
-    (%make-metal-inlined
-     fname
-     args
-     metal-form)))
+  (define-helper make-mfunc (function-name) (:kernel-p nil)
+    "TODO: Docs"
+    (with-helper (:kernel-p nil)
+      ;; -> Returns a string (later embedded in metalized functions) (as long as declared in :using)
+      `(lambda () ,metal-form))))
 

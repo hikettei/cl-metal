@@ -11,9 +11,11 @@
       (decf '-=)
       (mulcf '*=)
       (divcf '/=)
+      (mod   '%)
       (= '==)
+      (expt 'pow)
       (T symbol)))
-  
+
   (defun metalize-form (form
 			&aux
 			  (form
@@ -22,7 +24,10 @@
 			     (read-from-string
 			      (format nil "~a" form)))))
     (trivia:ematch form
-
+      ((list 'return form)
+       (format nil "return ~a"
+	       (metalize-form form)))
+       
       ;; Iteration over var
       ;; (dotimes (i var) ..)
       ((list* 'dotimes (list bind count) _)
@@ -87,6 +92,7 @@
       ;; (- a) -> -a
       ((list '- form)
        (format nil "-~a" (metalize-form form)))
+      
       ;; arithmetic
       ((list* (or '+ '- '* '/ '> '>= '< '<= '=) _)
        (flet ((helper (prev b)
@@ -97,10 +103,17 @@
 			(cSymbol (car form))
 			(metalize-form b))))
 	 (format nil "~a" (reduce #'helper (cdr form)))))
+
       ;; (expt a b) -> a^b
-      ((list 'expt a b)
-       (format nil "pow(~a, ~a)"
+      ((list (or 'expt) a b)
+       (format nil "~(~a~)(~a, ~a)"
+	       (cSymbol (car form))
 	       (metalize-form a)
+	       (metalize-form b)))
+      ((list (or 'mod) a b)
+       (format nil "(~a ~a ~a)"
+	       (metalize-form a)
+	       (cSymbol (car form))
 	       (metalize-form b)))
       ;; A = B, A+=B, A-=B, A*=B, A/=B
       ((list (or 'incf 'decf 'mulcf 'divcf) form1)
@@ -164,6 +177,9 @@
        (format nil "~a" form)))))
 
 
+(defun set-implict-returns ()
+  
+  )
 ;; [TODO]
 ;;  - Testing
 ;;  - Complete all specs
@@ -172,8 +188,6 @@
 
 (defmacro with-metalize (&rest forms)
   "[Experimental] Translates the given S-expressions into a metal expression.
-
-
 "
   (let ((metalized-form
 	  (cl-ppcre:regex-replace-all
