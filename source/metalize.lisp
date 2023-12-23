@@ -176,10 +176,37 @@
        (warn "metalize-form: Cannot deal with this form: ~a" form)
        (format nil "~a" form)))))
 
+(defun set-implict-return (form)
+  "If form is a leaf and inside specified forms, insert a return."
+  (flet ((insert-helper (target)
+	   (let ((returned
+		   (set-implict-return target)))
+	     (if (equal target returned)
+		 ;; returns weren't found -> add a return
+		 (if (listp returned)
+		     `(return ,@returned)
+		     `(return ,returned))
+		 returned))))
+    ;;[TODO] Add more patterns:
+    (trivia:ematch form
+      ((list* (or 'let 'let*) _)
+       `(,@(butlast form)	
+	 ,(insert-helper (car (last form)))))
+      ((list* (or 'if) cond a b)
+       `(,(car form)
+	 ,cond
+	 ,(when a
+	    (insert-helper a))
+	 ,(when b
+	    (insert-helper b))))
+      ((list* (or 'progn) _)
+       `(,@(butlast form)
+	 ,(insert-helper (last form))))
+      (_
+       (if (listp form)
+	   (map 'list #'set-implict-return form)
+	   form)))))
 
-(defun set-implict-returns ()
-  
-  )
 ;; [TODO]
 ;;  - Testing
 ;;  - Complete all specs
@@ -192,7 +219,9 @@
   (let ((metalized-form
 	  (cl-ppcre:regex-replace-all
 	   "};"
-	   (map-split1 #.(format nil ";~%") #'metalize-form forms)
+	   (map-split1
+	    #.(format nil ";~%")
+	    #'metalize-form forms)
 	   "}")))
     metalized-form))
 

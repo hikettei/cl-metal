@@ -201,11 +201,15 @@ Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf,
 	      (map-split ", " mparser args))
 	    metalized-form))
 
-  (defun eval-metal-form (metal-forms metalize-p)
+  (defun eval-metal-form (infer-returns metal-forms metalize-p)
     (let ((results
 	    (loop for form in metal-forms
 		  for evaluated-form = (eval (if metalize-p
-						 (eval `(with-metalize ,form))
+						 (eval
+						  `(with-metalize
+						       ,(if infer-returns
+							    (set-implict-return form)
+							    form)))
 						 form))
 		  if (= (length metal-forms) 1)
 		    collect
@@ -269,7 +273,12 @@ Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf,
 			:return-type return-type
 			:args margs
 			:using using
-			:metalized-form (eval-metal-form metalized-form (eql style :lisp)))))
+			:metalized-form (eval-metal-form
+					 (and
+					  (null ,kernel-p)
+					  (not (string= "void" (format nil "~(~a~)" return-type))))
+					 metalized-form
+					 (eql style :lisp)))))
 		(when stream
 		  (format stream "~a" metal-form))
 		,@body)))

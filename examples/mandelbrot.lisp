@@ -20,9 +20,9 @@
 	(let ((x1 (- (* x x) (* y y) a))
 	      (y1 (- (* 2.0 x y) b)))
 	  (if (> (+ (* x1 x1) (* y1 y1)) 4.0)
-	      (return m)
-	      (return (aux x1 y1 a b (+ m 1)))))
-	(return 0.0)))
+	      m
+	      (aux x1 y1 a b (+ m 1))))
+	0.0))
 
 (define-kernel (mandelbrot
 		:thread-position-in-grid id
