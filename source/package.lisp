@@ -109,15 +109,23 @@ The function is inlined before the compilation and the overhead can be ignored.
   
   (restart-case
       (progn
-	;;(reload-foreign-libraries)
 	(load-foreign-library lib-path)
 	t)
     (make-build-and-try-again ()
-      :report "Ensure compiling the swift library and try loading it again"
+      :report "Rebulding libCLMetal.dylib and trying again"
+      
+      (format t "[cl-metal]
+  If you want to operate this task manually, follow these steps:
+```
+$ cd ~a
+$ make build
+```
+"
+	      (namestring (asdf:system-relative-pathname "cl-metal" "./")))
       (let* ((cmd
 	       (list
 		"cd"
-		(namestring
+	        (namestring
 		 (asdf:system-relative-pathname "cl-metal" "./"))
 		"&&"
 		"make build"))
@@ -131,6 +139,7 @@ The function is inlined before the compilation and the overhead can be ignored.
 	  (error "Failed to compile the swift library due to:~%~a"
 		 (alexandria:read-stream-content-into-string error-output)))
 	(warn "cl-metal tries loading ~a again ..." lib-path)
+	(reload-foreign-libraries)
 	(load-cl-metal-library)))))
 
 ;; Loading libCLMetal.dylib
