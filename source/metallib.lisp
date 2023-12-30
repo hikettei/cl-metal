@@ -72,7 +72,10 @@ Return -> Metallib"
 ;;  (%make-metal-inlined fname (map 'list #'parse-marg args (range 0 (length args))) source))
 
 ;; Memo: templates can't be used without additional compilation?
-(defun funcall-metal (metallib &rest args &aux (kcount 1))
+(defun %funcall-metal (metallib
+		       &key
+			 (args)
+			 (kcount nil))
   "Invokes the kernel described in metal"
   (declare (type Metallib metallib)
 	   ;;(optimize (speed 3))
@@ -143,7 +146,8 @@ Return -> Metallib"
 		   (if (typep (car rest-arr) 'simple-array)
 		       ;; Array pointers are accesible via CFFI wrappers
 		       (with-pointer-to-vector-data (bind* (car rest-arr))
-			 (setq kcount (array-total-size (car rest-arr)))
+			 (when (null kcount)
+			   (setq kcount (array-total-size (car rest-arr))))
 			 (return-with-retcode
 			  (clm-alloc
 			   count
@@ -174,4 +178,7 @@ Return -> Metallib"
 			    (cdr rest-arr)
 			    `(,@buff-list ,bind*))))))))
       (send 0 args nil))))
+
+(defun funcall-metal (metallib &rest args)
+  (%funcall-metal metallib :args args))
 

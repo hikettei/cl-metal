@@ -8,7 +8,7 @@
   `(loop for i upfrom ,upfrom below ,below by ,by collect i))
 
 (defun map-split (split-with function &rest sequences)
-  "A B C -> A, B, C"
+  "A helper function merging A B C -> A, B, C"
   (apply
    #'concatenate
    'string
@@ -24,8 +24,8 @@
       sequences)))))
 
 (defun map-split1 (split-with function &rest sequences)
-  "A B C -> A, B, C
-map-split but butlast is removed"
+  "A helper function merging A B C -> A, B, C,
+this is the equivalent to map-split ignoring , is added to the last sequence"
   (apply
    #'concatenate
    'string
@@ -38,6 +38,4 @@ map-split but butlast is removed"
 	  (apply function args)
 	  split-with))
      sequences))))
-
-
 

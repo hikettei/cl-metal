@@ -25,6 +25,7 @@
    #:make-metal
    #:%make-metal-inlined
    #:funcall-metal
+   #:%funcall-metal
    #:%compile-metal-kernel
    #:%load-from-metallib)
 
