@@ -27,6 +27,7 @@
    #:funcall-metal
    #:%funcall-metal
    #:%compile-metal-kernel
+   #:get-kernel
    #:%load-from-metallib)
 
   (:export

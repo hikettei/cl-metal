@@ -221,6 +221,8 @@ Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf,
 		     #.(format nil ";~%")))))
       (apply #'concatenate 'string results))))
 
+(defgeneric get-kernel (kernel-name) (:documentation "Returns a Metallib structure corresponding to kernel-name"))
+
 (macrolet ((define-helper (macro-name
 			   args-head
 			   (&key
@@ -282,17 +284,24 @@ Ref: https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf,
 		(when stream
 		  (format stream "~a" metal-form))
 		,@body)))
-  
+
   (define-helper define-kernel (function-name) ()
     "Defines an inlined metal kernel. (TODO Docstring)"
     (with-helper ()
-      `(defun ,function-name (,@(map 'list #'car args))
-	 (funcall-metal
-	  ,(%make-metal-inlined
-	    (cName function-name)
-	    args
-	    metal-form)
-	  ,@(map 'list #'car args)))))
+      `(progn
+	 (defmethod get-kernel ((op (eql ',function-name)))
+	   ,(%make-metal-inlined
+	     (cName function-name)
+	     args
+	     metal-form))
+	 
+	 (defun ,function-name (,@(map 'list #'car args))
+	   (funcall-metal
+	    ,(%make-metal-inlined
+	      (cName function-name)
+	      args
+	      metal-form)
+	    ,@(map 'list #'car args))))))
 
   (define-helper make-kernel () ()
     "TODO: Docs"
