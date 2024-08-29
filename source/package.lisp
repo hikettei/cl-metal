@@ -101,8 +101,6 @@ The function is inlined before the compilation and the overhead can be ignored.
 				   (namestring (asdf:system-relative-pathname "cl-metal" ""))
 				   " && make build")))
 	     (warn "cl-metal: Running ~a. This may take a few seconds..." cmd)
-             (uiop:run-program
-              cmd
-              :error-output t)))
-         shared-library-pathname)))
-
+             (uiop:run-program cmd :error-output t)))
+	 shared-library-pathname)))
+(load-foreign-library 'libclmetal)
