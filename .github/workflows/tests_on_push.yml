@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         lisp: [sbcl-bin/2.4.0, ccl-bin/1.12.2, ecl]
-        os: [macos-latest-xlarge]
+        os: [macos-14]
         target:
         - normal
     steps:
