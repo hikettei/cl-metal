@@ -25,9 +25,9 @@ The package would be dedicated to macOS with Apple Silicon. If you're looking fo
 		:using (aux)
 		:stream t)
     (void ((x* uint8-t :out)))
-    (let ((a (/ (- (mod id 2048) 512.0) 1024.0))
-	  (b (/ (- (/   id 2048) 1024.0) 1024.0)))
-      (setf (aref x id) (aux 0.0 0.0 a b 1))))
+    (let ((a (/ (- (mod id.x 2048) 512.0) 1024.0))
+	  (b (/ (- (/   id.x 2048) 1024.0) 1024.0)))
+      (setf (aref x id.x) (aux 0.0 0.0 a b 1))))
 ```
 
 ## Development
