@@ -18,6 +18,5 @@ build: ## Builds libCLMetal.dylib
 
 .PHONY: test
 test: ## Running the test harness
-	cd ./lib && swift build -c release && swift test && cd ..
 	$(CL) $(QUICKLOAD) --eval '(print (asdf:test-system :cl-metal/test))'
 
