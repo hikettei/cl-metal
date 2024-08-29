@@ -6,21 +6,15 @@
 
 ")
   (:use :cl :cffi)
-  (:import-from :float-features
-		#:with-float-traps-masked)
-
+  (:import-from :float-features #:with-float-traps-masked)
   (:export
    #:metal-available-p
    #:apple-silicon-p
-   #:apple-computer-p
-   )
-  
+   #:apple-computer-p)
   (:export
    #:use-device
    #:get-n-device
-   #:get-device
-   )
-
+   #:get-device)
   (:export
    #:make-metal
    #:%make-metal-inlined
@@ -29,10 +23,7 @@
    #:%compile-metal-kernel
    #:get-kernel
    #:%load-from-metallib)
-
-  (:export
-   #:with-metalize)
-
+  (:export #:with-metalize)
   (:export
    #:define-kernel
    #:make-kernel

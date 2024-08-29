@@ -51,3 +51,19 @@
      (test-scalar-input a 2.0)
      (every (equivalent-to 3.0) a))))
 
+(deftest test-dtype
+  (macrolet ((def (fname type lisp one)
+	       `(testing ,(format nil "Testing w/ ~a" type)
+		  (define-kernel (,fname :thread-position-in-grid id)
+		      (void ((a* ,type :in) (b* ,type :out)))
+		      (incf (aref b id.x) (aref a id.x)))
+		  (let* ((a   (make-array 12
+			     :element-type ,lisp
+			     :initial-element ,one))
+			 (b   (make-array 12
+			     :element-type ,lisp
+			     :initial-element ,one)))
+		    (ok (every (equivalent-to 2) (,fname a b)))))))
+    (def test-uint8 uint8-t '(unsigned-byte 8) 1)
+    (def test-bfloat16 bfloat 'single-float 1.0)))
+
