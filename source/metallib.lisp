@@ -72,6 +72,20 @@ Return -> Metallib"
 ;;  (%make-metal-inlined fname (map 'list #'parse-marg args (range 0 (length args))) source))
 
 ;; Memo: templates can't be used without additional compilation?
+(defun translate-dtype (dtype)
+  (case dtype
+    (:boolean :bool)
+    (:float32 :float)
+    (:uint64-t :uint64)
+    (:int64-t :int64)
+    (:int32-t :int32)
+    (:uint32-t :uint32)
+    (:int16-t :int16)
+    (:uint16-t :uint16)
+    (:uint8-t :uint8)
+    (:int8-t :int8)
+    (otherwise dtype)))
+
 (defun %funcall-metal (metallib
 		       &key
 			 (args)
@@ -162,7 +176,7 @@ Return -> Metallib"
 				     (string-upcase
 				      (marg-dtype (nth count (metallib-args metallib))))
 				     "KEYWORD")))
-			 (with-foreign-object (bind* dtype)
+			 (with-foreign-object (bind* (translate-dtype dtype))
 			   ;; [TODO] if bind* is a output variable, ignore the memcpy below for optimization.
 			   (setf (mem-ref bind* dtype) (car rest-arr))
 			   ;; regarded as a scalar value:
