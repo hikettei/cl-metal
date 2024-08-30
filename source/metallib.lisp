@@ -178,7 +178,7 @@ Return -> Metallib"
 				     "KEYWORD")))
 			 (with-foreign-object (bind* (translate-dtype dtype))
 			   ;; [TODO] if bind* is a output variable, ignore the memcpy below for optimization.
-			   (setf (mem-ref bind* dtype) (car rest-arr))
+			   (setf (mem-ref bind* (translate-dtype dtype)) (car rest-arr))
 			   ;; regarded as a scalar value:
 			   (return-with-retcode
 			    (clm-alloc
