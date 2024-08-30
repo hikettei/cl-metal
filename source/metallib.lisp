@@ -76,14 +76,14 @@ Return -> Metallib"
   (case dtype
     (:boolean :bool)
     (:float32 :float)
-    (:uint64-t :uint64)
-    (:int64-t :int64)
-    (:int32-t :int32)
-    (:uint32-t :uint32)
-    (:int16-t :int16)
-    (:uint16-t :uint16)
-    (:uint8-t :uint8)
-    (:int8-t :int8)
+    (:uint64_t :uint64)
+    (:int64_t :int64)
+    (:int32_t :int32)
+    (:uint32_t :uint32)
+    (:int16_t :int16)
+    (:uint16_t :uint16)
+    (:uint8_t :uint8)
+    (:int8_t :int8)
     (otherwise dtype)))
 
 (defun %funcall-metal (metallib
