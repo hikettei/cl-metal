@@ -63,16 +63,19 @@ https://bugs.launchpad.net/sbcl/+bug/1519630"
   (idtype :int))    ;; a fixnum indicating the dtype
 
 (defcfun "clm_run" :int
-  (kcount :int))
+  (global-width :int)
+  (global-height :int)
+  (global-depth :int)
+  (local-width :int)
+  (local-height :int)
+  (local-depth :int))
 
 (defcfun "clm_retrieve" :int
   (nth-buff :int)
   (obuff    :pointer))
 
 (defcfun "clm_get_compile_error" :string)
-
-(defcfun "clm_get_device" :string
-  (device-idx :int))
+(defcfun "clm_get_device" :string  (device-idx :int))
 
 (defun get-device (idx)
   "Returns a string indicating the status of gpu[idx]"

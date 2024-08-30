@@ -75,7 +75,8 @@ Return -> Metallib"
 (defun %funcall-metal (metallib
 		       &key
 			 (args)
-			 (kcount nil))
+			 (global-size `(1 1 1))
+			 (local-size `(1 1 1)))
   "Invokes the kernel described in metal"
   (declare (type Metallib metallib)
 	   ;;(optimize (speed 3))
@@ -127,7 +128,7 @@ Return -> Metallib"
 		     ;; 3. Finally (after confirmed all buffers are sent to swift api)
 		     ;; Commits the function
 		     (return-with-retcode
-		      (clm-run kcount))
+		      (apply #'clm-run (append global-size local-size)))
 		     ;; 4. Retreive and copy all buffers to the output
 		     ;; metal-funcall returns a list of tensors whose state = :out or :io
 		     (apply
@@ -146,8 +147,6 @@ Return -> Metallib"
 		   (if (typep (car rest-arr) 'simple-array)
 		       ;; Array pointers are accesible via CFFI wrappers
 		       (with-pointer-to-vector-data (bind* (car rest-arr))
-			 (when (null kcount)
-			   (setq kcount (array-total-size (car rest-arr))))
 			 (return-with-retcode
 			  (clm-alloc
 			   count

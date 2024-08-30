@@ -2,8 +2,7 @@
 /*
  cl-metal.swift
  Swift Bindings to be compiled into .dylib and interoperated with Common Lisp via CFFI.
- Following codes are strongly inspired from: https://github.com/baldand/py-metal-compute/blob/main/src/metalcompute.swift
- */
+*/
 
 import Metal
 import MetalPerformanceShaders
@@ -55,9 +54,7 @@ enum Dtype: Int {
     case F32     = 9
     case F64     = 10    
 }
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 class CLMBuffer {
     public var buff:MTLBuffer
     public var count:Int
@@ -69,10 +66,8 @@ class CLMBuffer {
         self.stride = stride
     }
 }
-
 // Session = device, queue et al
 //         = [inBuff1, outBuff2, ...] x N
-
 class DeviceSession {
     var device:MTLDevice?
     var commandQueue:MTLCommandQueue?
@@ -102,9 +97,7 @@ class DeviceSession {
 var globalDeviceSession:DeviceSession?
 var compileError:String = ""
 var globalCurrentDeviceIdx:Int = 0
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 @_cdecl("clm_set_device")
 public func clm_set_device(device_index:Int) -> Int {
     let devices = MTLCopyAllDevices()
@@ -200,7 +193,6 @@ public func clm_compile_kernel(metalRaw: UnsafePointer<CChar>,
     
     return RetCode.Success.rawValue
 }
-
 // Loads pre-compiled metal kernel file as a MTLLibrary
 @_cdecl("clm_load_from_metallib")
 public func clm_load_from_metallib(metallibPath: UnsafePointer<CChar>, fnameRaw: UnsafePointer<CChar>) -> Int {
@@ -215,14 +207,12 @@ public func clm_load_from_metallib(metallibPath: UnsafePointer<CChar>, fnameRaw:
     do {
         let newLibrary        = try lDevice.makeLibrary(filepath: path)
         guard let newFunction = newLibrary.makeFunction(name: fName) else { return RetCode.FailedToFindFunction.rawValue }
-
         // updating two global variables: library and function
         session!.library  = newLibrary
         session!.function = newFunction
     } catch {
         return RetCode.FailedToLoadLibrary.rawValue
     }
-
     // Here, after confiming compiling was succeed, two gloal variables are changed:
     session!.readyToCompute = true
     session!.readyToRun = false
@@ -304,9 +294,8 @@ public func clm_alloc(nth:Int, icount: Int, input: UnsafeRawPointer, iformat: In
 
 
 @_cdecl("clm_run")
-public func clm_run(kcount:Int) -> Int {
+public func clm_run(global_width:Int, global_height:Int, global_depth:Int, local_width:Int, local_height:Int, local_depth:Int) -> Int {
     // Execute the configured compute task, waiting for completion
-    
     let session = globalDeviceSession
     guard session != nil else { return RetCode.NotReadyToCompile.rawValue }
     
@@ -326,12 +315,8 @@ public func clm_run(kcount:Int) -> Int {
             encoder.setBuffer(buff.buff, offset: 0, index: index)
         }
         
-        let w = pipelineState.threadExecutionWidth
-        let h = pipelineState.maxTotalThreadsPerThreadgroup / w
-
-        // Element-wise
-        let numThreadgroups       = MTLSize(width: (kcount+(w*h-1))/(w*h), height: 1, depth: 1)
-        let threadsPerThreadgroup = MTLSize(width: w*h, height: 1, depth: 1)
+        let numThreadgroups       = MTLSize(width: global_width, height: global_height, depth: global_depth)
+        let threadsPerThreadgroup = MTLSize(width: local_width, height: local_height, depth: local_depth)
         
         encoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerThreadgroup)
         encoder.endEncoding()
